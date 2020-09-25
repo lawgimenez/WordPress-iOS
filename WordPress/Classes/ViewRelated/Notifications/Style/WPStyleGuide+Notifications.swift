@@ -10,7 +10,7 @@ extension WPStyleGuide {
         //
 
         // NoteTableViewHeader
-        public static let sectionHeaderBackgroundColor = UIColor.listBackground
+        public static let sectionHeaderBackgroundColor = UIColor.ungroupedListBackground
 
         public static var sectionHeaderRegularStyle: [NSAttributedString.Key: Any] {
             return  [.paragraphStyle: sectionHeaderParagraph,
@@ -25,8 +25,8 @@ extension WPStyleGuide {
         public static let noticonUnreadColor        = UIColor.primary
         public static let noticonUnmoderatedColor   = UIColor.warning
 
-        public static let noteBackgroundReadColor   = UIColor.listForeground
-        public static let noteBackgroundUnreadColor = UIColor.listForegroundUnread
+        public static let noteBackgroundReadColor   = UIColor.ungroupedListBackground
+        public static let noteBackgroundUnreadColor = UIColor.ungroupedListUnread
 
         public static let noteSeparatorColor        = blockSeparatorColor
 
@@ -42,9 +42,9 @@ extension WPStyleGuide {
                      .foregroundColor: subjectTextColor ]
         }
 
-        public static var subjectBoldStyle: [NSAttributedString.Key: Any] {
+        public static var subjectSemiBoldStyle: [NSAttributedString.Key: Any] {
             return [.paragraphStyle: subjectParagraph,
-                    .font: subjectBoldFont ]
+                    .font: subjectSemiBoldFont ]
         }
 
         public static var subjectItalicsStyle: [NSAttributedString.Key: Any] {
@@ -65,6 +65,13 @@ extension WPStyleGuide {
             return [.paragraphStyle: snippetParagraph,
                     .font: subjectRegularFont,
                     .foregroundColor: snippetColor ]
+        }
+
+        public static var headerDetailsRegularStyle: [NSAttributedString.Key: Any] {
+            return  [.paragraphStyle: snippetHeaderParagraph,
+                     .font: headerDetailsRegularFont,
+                     .foregroundColor: headerDetailsColor
+            ]
         }
 
         // MARK: - Styles used by NotificationDetailsViewController
@@ -256,8 +263,8 @@ extension WPStyleGuide {
             // Image(s)
             let side = WPStyleGuide.fontSizeForTextStyle(.subheadline)
             let size = CGSize(width: side, height: side)
-            let followIcon = Gridicon.iconOfType(.readerFollow, withSize: size)
-            let followingIcon = Gridicon.iconOfType(.readerFollowing, withSize: size)
+            let followIcon = UIImage.gridicon(.readerFollow, size: size)
+            let followingIcon = UIImage.gridicon(.readerFollowing, size: size)
 
             button.setImage(followIcon.imageWithTintColor(normalColor), for: .normal)
             button.setImage(followingIcon.imageWithTintColor(selectedColor), for: .selected)
@@ -307,6 +314,9 @@ extension WPStyleGuide {
         fileprivate static let snippetParagraph         = NSMutableParagraphStyle(
             minLineHeight: snippetLineSize, lineBreakMode: .byWordWrapping, alignment: .natural
         )
+        fileprivate static let snippetHeaderParagraph   = NSMutableParagraphStyle(
+            minLineHeight: snippetLineSize, lineBreakMode: .byTruncatingTail, alignment: .natural
+        )
         fileprivate static let blockParagraph           = NSMutableParagraphStyle(
             minLineHeight: blockLineSize, lineBreakMode: .byWordWrapping, alignment: .natural
         )
@@ -333,8 +343,8 @@ extension WPStyleGuide {
         fileprivate static var subjectRegularFont: UIFont {
             return WPStyleGuide.fontForTextStyle(.subheadline)
         }
-        fileprivate static var subjectBoldFont: UIFont {
-            return WPStyleGuide.fontForTextStyle(.subheadline, fontWeight: .bold)
+        fileprivate static var subjectSemiBoldFont: UIFont {
+            return WPStyleGuide.fontForTextStyle(.subheadline, fontWeight: .semibold)
         }
         fileprivate static var subjectItalicsFont: UIFont {
             return  WPStyleGuide.fontForTextStyle(.subheadline, symbolicTraits: .traitItalic)

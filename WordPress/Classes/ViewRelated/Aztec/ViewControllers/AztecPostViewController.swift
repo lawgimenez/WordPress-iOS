@@ -80,6 +80,10 @@ class AztecPostViewController: UIViewController, PostEditor {
         self?.mapUIContentToPostAndSave(immediate: true)
     }
 
+    var wordCount: UInt {
+        return richTextView.wordCount
+    }
+
     // MARK: - Styling Options
 
     private lazy var optionsTablePresenter = OptionsTablePresenter(presentingViewController: self, presentingTextView: editorView.richTextView)
@@ -360,7 +364,7 @@ class AztecPostViewController: UIViewController, PostEditor {
 
     /// Active Downloads
     ///
-    fileprivate var activeMediaRequests = [ImageDownloader.Task]()
+    fileprivate var activeMediaRequests = [ImageDownloaderTask]()
 
     /// Media Library Data Source
     ///
@@ -536,7 +540,6 @@ class AztecPostViewController: UIViewController, PostEditor {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        resetNavigationColors()
         configureDismissButton()
         startListeningToNotifications()
         verificationPromptHelper?.updateVerificationStatus()
@@ -571,6 +574,13 @@ class AztecPostViewController: UIViewController, PostEditor {
         })
 
         optionsTablePresenter.dismiss()
+
+        // Required to work around an issue present in iOS 14 beta 2
+        // https://github.com/wordpress-mobile/WordPress-iOS/issues/14460
+        if #available(iOS 14.0, *),
+            presentedViewController?.view.accessibilityIdentifier == MoreSheetAlert.accessibilityIdentifier {
+            dismiss(animated: true)
+        }
     }
 
     override func willMove(toParent parent: UIViewController?) {
@@ -585,7 +595,6 @@ class AztecPostViewController: UIViewController, PostEditor {
         navigationController.delegate = self
         configureMediaProgressView(in: navigationController.navigationBar)
     }
-
 
     // MARK: - Title and Title placeholder position methods
 
@@ -717,14 +726,6 @@ class AztecPostViewController: UIViewController, PostEditor {
         navigationItem.rightBarButtonItems = navigationBarManager.rightBarButtonItems
     }
 
-    /// This is to restore the navigation bar colors after the UIDocumentPickerViewController has been dismissed,
-    /// either by uploading media or canceling. Doing this in the UIDocumentPickerDelegate methods either did
-    /// nothing or the resetting wasn't permanent.
-    ///
-    fileprivate func resetNavigationColors() {
-        WPStyleGuide.configureNavigationAppearance()
-    }
-
     func configureDismissButton() {
         let image = isModal() ? Assets.closeButtonModalImage : Assets.closeButtonRegularImage
         navigationBarManager.closeButton.setImage(image, for: .normal)
@@ -817,7 +818,6 @@ class AztecPostViewController: UIViewController, PostEditor {
 
     func setHTML(_ html: String) {
         editorView.setHTML(html)
-
         if editorView.editingMode == .richText {
             processMediaAttachments()
         }
@@ -1266,7 +1266,16 @@ private extension AztecPostViewController {
 
         alert.addCancelActionWithTitle(MoreSheetAlert.keepEditingTitle)
 
-        alert.popoverPresentationController?.barButtonItem = navigationBarManager.moreBarButtonItem
+        if #available(iOS 14.0, *),
+            let button = navigationBarManager.moreBarButtonItem.customView {
+            // Required to work around an issue present in iOS 14 beta 2
+            // https://github.com/wordpress-mobile/WordPress-iOS/issues/14460
+            alert.popoverPresentationController?.sourceRect = button.convert(button.bounds, to: navigationController?.navigationBar)
+            alert.popoverPresentationController?.sourceView = navigationController?.navigationBar
+            alert.view.accessibilityIdentifier = MoreSheetAlert.accessibilityIdentifier
+        } else {
+            alert.popoverPresentationController?.barButtonItem = navigationBarManager.moreBarButtonItem
+        }
 
         present(alert, animated: true)
     }
@@ -1757,7 +1766,7 @@ extension AztecPostViewController {
         let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: Constants.toolbarHeight))
         toolbar.barTintColor = WPStyleGuide.aztecFormatBarBackgroundColor
         toolbar.tintColor = WPStyleGuide.aztecFormatBarActiveColor
-        let gridButton = UIBarButtonItem(image: Gridicon.iconOfType(.grid), style: .plain, target: self, action: #selector(mediaAddShowFullScreen))
+        let gridButton = UIBarButtonItem(image: .gridicon(.grid), style: .plain, target: self, action: #selector(mediaAddShowFullScreen))
         gridButton.accessibilityLabel = NSLocalizedString("Open full media picker", comment: "Editor button to swich the media picker from quick mode to full picker")
         toolbar.items = [
             UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(mediaAddInputCancelled)),
@@ -1849,7 +1858,7 @@ extension AztecPostViewController {
         options.allowCaptureOfMedia = false
         options.showSearchBar = true
         options.badgedUTTypes = [String(kUTTypeGIF)]
-        options.preferredStatusBarStyle = .lightContent
+        options.preferredStatusBarStyle = WPStyleGuide.preferredStatusBarStyle
 
         let picker = WPNavigationMediaPickerViewController()
 
@@ -1868,6 +1877,7 @@ extension AztecPostViewController {
         picker.selectionActionTitle = Constants.mediaPickerInsertText
         picker.mediaPicker.options = options
         picker.delegate = self
+        picker.previewActionTitle = NSLocalizedString("Edit %@", comment: "Button that displays the media editor to the user")
         picker.modalPresentationStyle = .currentContext
         if let previousPicker = mediaPickerInputViewController?.mediaPicker {
             picker.mediaPicker.selectedAssets = previousPicker.selectedAssets
@@ -1895,7 +1905,7 @@ extension AztecPostViewController {
         options.allowCaptureOfMedia = false
         options.scrollVertically = true
         options.badgedUTTypes = [String(kUTTypeGIF)]
-        options.preferredStatusBarStyle = .lightContent
+        options.preferredStatusBarStyle = WPStyleGuide.preferredStatusBarStyle
 
         let picker = WPInputMediaPickerViewController(options: options)
         mediaPickerInputViewController = picker
@@ -2129,7 +2139,7 @@ extension AztecPostViewController {
         toolbar.selectedTintColor = WPStyleGuide.aztecFormatBarActiveColor
         toolbar.disabledTintColor = WPStyleGuide.aztecFormatBarDisabledColor
         toolbar.dividerTintColor = WPStyleGuide.aztecFormatBarDividerColor
-        toolbar.overflowToggleIcon = Gridicon.iconOfType(.ellipsis)
+        toolbar.overflowToggleIcon = .gridicon(.ellipsis)
 
         let mediaButton = makeToolbarButton(identifier: .media)
         mediaButton.normalTintColor = .primary
@@ -2400,10 +2410,10 @@ extension AztecPostViewController {
         attachment?.uploadID = media.uploadID
     }
 
-    /// Sets the badge title of `attachment` to "GIF" if either the media is being imported from Giphy,
+    /// Sets the badge title of `attachment` to "GIF" if either the media is being imported from Tenor,
     /// or if it's a PHAsset with an animated playback style.
     private func setGifBadgeIfNecessary(for attachment: MediaAttachment, asset: ExportableAsset, source: MediaSource) {
-        var isGif = (source == .giphy)
+        var isGif = source == .tenor
 
         if let asset = asset as? PHAsset,
             asset.playbackStyle == .imageAnimated {
@@ -2419,12 +2429,12 @@ extension AztecPostViewController {
         insert(exportableAsset: url as NSURL, source: .otherApps)
     }
 
-    fileprivate func insertImage(image: UIImage) {
-        insert(exportableAsset: image, source: .deviceLibrary)
+    fileprivate func insertImage(image: UIImage, source: MediaSource = .deviceLibrary) {
+        insert(exportableAsset: image, source: source)
     }
 
-    fileprivate func insertDeviceMedia(phAsset: PHAsset) {
-        insert(exportableAsset: phAsset, source: .deviceLibrary)
+    fileprivate func insertDeviceMedia(phAsset: PHAsset, source: MediaSource = .deviceLibrary) {
+        insert(exportableAsset: phAsset, source: source)
     }
 
     private func insertStockPhotosMedia(_ media: StockPhotosMedia) {
@@ -2447,14 +2457,16 @@ extension AztecPostViewController {
         }
     }
 
-    private func insertImageAttachment(with url: URL = Constants.placeholderMediaLink) -> ImageAttachment {
+    private func insertImageAttachment(with url: URL = Constants.placeholderMediaLink, caption: String? = nil) -> ImageAttachment {
         let attachment = richTextView.replaceWithImage(at: self.richTextView.selectedRange, sourceURL: url, placeHolderImage: Assets.defaultMissingImage)
         attachment.size = .full
 
         if url.isGif {
             attachment.badgeTitle = Constants.mediaGIFBadgeTitle
         }
-
+        if let caption = caption {
+            richTextView.replaceCaption(for: attachment, with: NSAttributedString(string: caption))
+        }
         return attachment
     }
 
@@ -2528,7 +2540,7 @@ extension AztecPostViewController {
         }
         switch media.mediaType {
         case .image:
-            let attachment = insertImageAttachment(with: remoteURL)
+            let attachment = insertImageAttachment(with: remoteURL, caption: media.caption)
             attachment.alt = media.alt
             WPAppAnalytics.track(.editorAddedPhotoViaWPMediaLibrary, withProperties: WPAppAnalytics.properties(for: media, selectionMethod: mediaSelectionMethod), with: post)
         case .video:
@@ -2558,7 +2570,7 @@ extension AztecPostViewController {
         }
         var attachment: MediaAttachment?
         if media.mediaType == .image {
-            attachment = insertImageAttachment(with: tempMediaURL)
+            attachment = insertImageAttachment(with: tempMediaURL, caption: media.caption)
         } else if media.mediaType == .video,
             let remoteURLStr = media.remoteURL,
             let remoteURL = URL(string: remoteURLStr) {
@@ -2662,7 +2674,7 @@ extension AztecPostViewController {
 
         let attributeMessage = NSAttributedString(string: message, attributes: Constants.mediaMessageAttributes)
         attachment.message = attributeMessage
-        attachment.overlayImage = Gridicon.iconOfType(.refresh, withSize: Constants.mediaOverlayIconSize)
+        attachment.overlayImage = .gridicon(.refresh, size: Constants.mediaOverlayIconSize)
         attachment.shouldHideBorder = true
         attachment.progress = nil
         richTextView.refresh(attachment, overlayUpdateOnly: true)
@@ -2767,7 +2779,7 @@ extension AztecPostViewController {
     fileprivate func process(videoAttachment: VideoAttachment) {
         // Use a placeholder for video while trying to generate a thumbnail
         DispatchQueue.main.async {
-            videoAttachment.image = Gridicon.iconOfType(.video, withSize: Constants.mediaPlaceholderImageSize)
+            videoAttachment.image = .gridicon(.video, size: Constants.mediaPlaceholderImageSize)
             self.richTextView.refresh(videoAttachment)
         }
         if let videoSrcURL = videoAttachment.url,
@@ -3313,10 +3325,10 @@ extension AztecPostViewController: StockPhotosPickerDelegate {
     }
 }
 
-extension AztecPostViewController: GiphyPickerDelegate {
-    func giphyPicker(_ picker: GiphyPicker, didFinishPicking assets: [GiphyMedia]) {
+extension AztecPostViewController: TenorPickerDelegate {
+    func tenorPicker(_ picker: TenorPicker, didFinishPicking assets: [TenorMedia]) {
         assets.forEach {
-            insert(exportableAsset: $0, source: .giphy)
+            insert(exportableAsset: $0, source: .tenor)
         }
     }
 }
@@ -3331,10 +3343,10 @@ extension AztecPostViewController {
     }
 
     struct Assets {
-        static let closeButtonModalImage    = Gridicon.iconOfType(.cross)
+        static let closeButtonModalImage    = UIImage.gridicon(.cross)
         static let closeButtonRegularImage  = UIImage(named: "icon-posts-editor-chevron")
-        static let defaultMissingImage      = Gridicon.iconOfType(.image)
-        static let linkPlaceholderImage     = Gridicon.iconOfType(.pages)
+        static let defaultMissingImage      = UIImage.gridicon(.image)
+        static let linkPlaceholderImage     = UIImage.gridicon(.pages)
     }
 
     struct Constants {
@@ -3385,6 +3397,7 @@ extension AztecPostViewController {
         static let historyTitle = NSLocalizedString("History", comment: "Displays the History screen from the editor's alert sheet")
         static let postSettingsTitle = NSLocalizedString("Post Settings", comment: "Name of the button to open the post settings")
         static let keepEditingTitle = NSLocalizedString("Keep Editing", comment: "Goes back to editing the post.")
+        static let accessibilityIdentifier = "MoreSheetAccessibilityIdentifier"
     }
 
     struct MediaAttachmentActionSheet {
@@ -3552,6 +3565,36 @@ extension AztecPostViewController {
     }
 
     private func edit(_ imageAttachment: ImageAttachment) {
+
+        guard imageAttachment.mediaURL?.isGif == false else {
+            confirmEditingGIF(imageAttachment)
+            return
+        }
+
+        editAttachment(imageAttachment)
+    }
+
+    private func confirmEditingGIF(_ imageAttachment: ImageAttachment) {
+        let alertController = UIAlertController(title: GIFAlertStrings.title,
+                                                message: GIFAlertStrings.message,
+                                                preferredStyle: .alert)
+
+        alertController.addCancelActionWithTitle(GIFAlertStrings.cancel) { _ in
+            if imageAttachment == self.currentSelectedAttachment {
+                self.currentSelectedAttachment = nil
+                self.resetMediaAttachmentOverlay(imageAttachment)
+                self.richTextView.refresh(imageAttachment)
+            }
+        }
+
+        alertController.addActionWithTitle(GIFAlertStrings.edit, style: .destructive) { _ in
+            self.editAttachment(imageAttachment)
+        }
+
+        present(alertController, animated: true)
+    }
+
+    private func editAttachment(_ imageAttachment: ImageAttachment) {
         guard let image = imageAttachment.image else {
             return
         }
@@ -3560,13 +3603,13 @@ extension AztecPostViewController {
         mediaEditor.editingAlreadyPublishedImage = true
 
         mediaEditor.edit(from: self,
-                              onFinishEditing: { [weak self] images, actions in
-                                guard !actions.isEmpty, let image = images.first as? UIImage else {
-                                    // If the image wasn't edited, do nothing
-                                    return
-                                }
+                         onFinishEditing: { [weak self] images, actions in
+                            guard !actions.isEmpty, let image = images.first as? UIImage else {
+                                // If the image wasn't edited, do nothing
+                                return
+                            }
 
-                                self?.replace(attachment: imageAttachment, with: image, actions: actions)
+                            self?.replace(attachment: imageAttachment, with: image, actions: actions)
         })
     }
 
@@ -3582,4 +3625,5 @@ extension AztecPostViewController {
         }
         attachment.uploadID = media.uploadID
     }
+
 }

@@ -305,9 +305,23 @@ class MediaCoordinator: NSObject {
                             success: {
                                 self.end(media)
         }, failure: { error in
-            guard let nserror = error as NSError? else {
-                return
-            }
+            // Ideally the upload service should always return an error.  This may be easier to enforce
+            // if we update the service to Swift, but in the meanwhile I'm instantiating an unknown upload
+            // error whenever the service doesn't provide one.
+            //
+            let nserror = error as NSError?
+                ?? NSError(
+                    domain: MediaServiceErrorDomain,
+                    code: MediaServiceError.unknownUploadError.rawValue,
+                    userInfo: [
+                        "filename": media.filename ?? "",
+                        "filesize": media.filesize ?? "",
+                        "height": media.height ?? "",
+                        "width": media.width ?? "",
+                        "localURL": media.localURL ?? "",
+                        "remoteURL": media.remoteURL ?? "",
+                ])
+
             self.coordinator(for: media).attach(error: nserror, toMediaID: media.uploadID)
             self.fail(nserror, media: media)
         })
@@ -320,8 +334,23 @@ class MediaCoordinator: NSObject {
     }
 
     private func trackUploadOf(_ media: Media, analyticsInfo: MediaAnalyticsInfo?) {
+        guard let info = analyticsInfo else {
+            return
+        }
+
+        guard let event = info.eventForMediaType(media.mediaType) else {
+            // Fall back to the WPShared event tracking
+            trackUploadViaWPSharedOf(media, analyticsInfo: analyticsInfo)
+            return
+        }
+
+        let properties = info.properties(for: media)
+        WPAnalytics.track(event, properties: properties, blog: media.blog)
+    }
+
+    private func trackUploadViaWPSharedOf(_ media: Media, analyticsInfo: MediaAnalyticsInfo?) {
         guard let info = analyticsInfo,
-            let event = info.eventForMediaType(media.mediaType) else {
+            let event = info.wpsharedEventForMediaType(media.mediaType) else {
             return
         }
 

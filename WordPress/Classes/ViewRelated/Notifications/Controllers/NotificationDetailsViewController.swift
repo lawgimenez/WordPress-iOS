@@ -68,6 +68,10 @@ class NotificationDetailsViewController: UIViewController {
     ///
     fileprivate let estimatedRowHeightsCache = NSCache<AnyObject, AnyObject>()
 
+    /// A Reader Detail VC to display post content if needed
+    ///
+    private var readerDetailViewController: ReaderDetailViewController?
+
     /// Previous NavBar Navigation Button
     ///
     var previousNavigationButton: UIButton!
@@ -294,8 +298,6 @@ extension NotificationDetailsViewController: UITableViewDelegate, UITableViewDat
             fatalError()
         }
 
-        setupSeparators(cell, indexPath: indexPath)
-
         setup(cell, withContentGroupAt: indexPath)
 
         return cell
@@ -309,6 +311,12 @@ extension NotificationDetailsViewController: UITableViewDelegate, UITableViewDat
 
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         estimatedRowHeightsCache.setObject(cell.frame.height as AnyObject, forKey: indexPath as AnyObject)
+
+        guard let cell = cell as? NoteBlockTableViewCell else {
+            return
+        }
+
+        setupSeparators(cell, indexPath: indexPath)
     }
 
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -361,11 +369,11 @@ extension NotificationDetailsViewController {
         navigationItem.backBarButtonItem = backButton
 
         let next = UIButton(type: .custom)
-        next.setImage(Gridicon.iconOfType(.arrowUp), for: .normal)
+        next.setImage(.gridicon(.arrowUp), for: .normal)
         next.addTarget(self, action: #selector(nextNotificationWasPressed), for: .touchUpInside)
 
         let previous = UIButton(type: .custom)
-        previous.setImage(Gridicon.iconOfType(.arrowDown), for: .normal)
+        previous.setImage(.gridicon(.arrowDown), for: .normal)
         previous.addTarget(self, action: #selector(previousNotificationWasPressed), for: .touchUpInside)
 
         previousNavigationButton = previous
@@ -492,6 +500,31 @@ extension NotificationDetailsViewController {
 
 
 
+// MARK: - Reader Helpers
+//
+private extension NotificationDetailsViewController {
+    func attachReaderViewIfNeeded() {
+        guard shouldAttachReaderView,
+            let postID = note.metaPostID,
+            let siteID = note.metaSiteID else {
+                readerDetailViewController?.remove()
+                return
+        }
+
+        readerDetailViewController?.remove()
+        let readerDetailViewController = ReaderDetailViewController.controllerWithPostID(postID, siteID: siteID)
+        add(readerDetailViewController)
+        readerDetailViewController.view.translatesAutoresizingMaskIntoConstraints = false
+        view.pinSubviewToSafeArea(readerDetailViewController.view)
+        self.readerDetailViewController = readerDetailViewController
+    }
+
+    var shouldAttachReaderView: Bool {
+        return note.kind == .newPost
+    }
+}
+
+
 // MARK: - Suggestions View Helpers
 //
 private extension NotificationDetailsViewController {
@@ -574,6 +607,8 @@ private extension NotificationDetailsViewController {
     func setupSeparators(_ cell: NoteBlockTableViewCell, indexPath: IndexPath) {
         cell.isBadge = note.isBadge
         cell.isLastRow = (indexPath.row >= note.headerAndBodyContentGroups.count - 1)
+
+        cell.refreshSeparators()
     }
 }
 
@@ -610,15 +645,17 @@ private extension NotificationDetailsViewController {
         // -   UITableViewCell's taps don't require a Gestures Recognizer. No big deal, but less code!
         //
 
-        let snippetBlock: NotificationTextContent? = blockGroup.blockOfKind(.text)
-        cell.headerDetails = snippetBlock?.text
         cell.attributedHeaderTitle = nil
+        cell.attributedHeaderDetails = nil
 
-        guard let gravatarBlock: NotificationTextContent = blockGroup.blockOfKind(.image) else {
-            return
+        guard let gravatarBlock: NotificationTextContent = blockGroup.blockOfKind(.image),
+            let snippetBlock: NotificationTextContent = blockGroup.blockOfKind(.text) else {
+                return
         }
 
         cell.attributedHeaderTitle = formatter.render(content: gravatarBlock, with: HeaderContentStyles())
+        cell.attributedHeaderDetails = formatter.render(content: snippetBlock, with: HeaderDetailsContentStyles())
+
         // Download the Gravatar
         let mediaURL = gravatarBlock.media.first?.mediaURL
         cell.downloadAuthorAvatar(with: mediaURL)
@@ -1146,9 +1183,16 @@ extension NotificationDetailsViewController: ReplyTextViewDelegate {
     func textView(_ textView: UITextView, didTypeWord word: String) {
         suggestionsTableView.showSuggestions(forWord: word)
     }
+
+    func replyTextView(_ replyTextView: ReplyTextView, willEnterFullScreen controller: FullScreenCommentReplyViewController) {
+        guard let siteID = note.metaSiteID else {
+            return
+        }
+
+        suggestionsTableView.hideSuggestions()
+        controller.enableSuggestions(with: siteID)
+    }
 }
-
-
 
 // MARK: - UIScrollViewDelegate
 //

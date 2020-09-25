@@ -69,14 +69,6 @@ print <<-EOF
 EOF
 end
 
-def print_giphy(giphy)
-print <<-EOF
-+ (NSString *)giphyAppId {
-    return @"#{giphy}";
-}
-EOF
-end
-
 def print_google_login_server(google_login_server)
 print <<-EOF
 + (NSString *)googleLoginServerClientId {
@@ -133,7 +125,23 @@ print <<-EOF
 EOF
 end
 
-def print_class(client, secret, sentry, appcenter, giphy, google_client, google_scheme, google_login_server, debugging_key, zendesk_app_id, zendesk_url, zendesk_client_id)
+def print_tenor(tenor_key)
+print <<-EOF
++ (NSString *)tenorApiKey {
+    return @"#{tenor_key}";
+}
+EOF
+end
+
+def print_encrypted_log_key(encrypted_log_key)
+print <<-EOF
++ (NSString *)encryptedLogKey {
+    return @"#{encrypted_log_key}";
+}
+EOF
+end
+
+def print_class(client, secret, sentry, appcenter, google_client, google_scheme, google_login_server, debugging_key, zendesk_app_id, zendesk_url, zendesk_client_id, tenor_key, encrypted_log_key)
   print <<-EOF
 #import "ApiCredentials.h"
 @implementation ApiCredentials
@@ -142,7 +150,6 @@ EOF
   print_secret(secret)
   print_sentry(sentry)
   print_appcenter(appcenter)
-  print_giphy(giphy)
   print_google_login_client(google_client)
   print_google_login_scheme(google_scheme)
   print_google_login_server(google_login_server)
@@ -150,6 +157,8 @@ EOF
   print_zendesk_app_id(zendesk_app_id)
   print_zendesk_url(zendesk_url)
   print_zendesk_client_id(zendesk_client_id)
+  print_tenor(tenor_key)
+  print_encrypted_log_key(encrypted_log_key)
   printf("@end\n")
 end
 
@@ -169,7 +178,6 @@ client = nil
 secret = nil
 sentry = nil
 appcenter = nil
-giphy = nil
 google_client = nil
 google_scheme = nil
 google_login_server = nil
@@ -177,9 +185,15 @@ debugging_key = nil
 zendesk_app_id = nil
 zendesk_url = nil
 zendesk_client_id = nil
+tenor_key = nil
+encrytedlogkey=nil
+
 File.open(path) do |f|
   f.each_line do |l|
-    (k,value) = l.split("=")
+    eqPos = l.index("=")
+    k = l[0...eqPos]
+    value = l[(eqPos + 1)..-1]
+    
     next if !value
     value.strip!
     if k == "WPCOM_APP_ID"
@@ -190,8 +204,6 @@ File.open(path) do |f|
       sentry = value
     elsif k == "APPCENTER_APP_ID"
       appcenter = value
-    elsif k == "GIPHY_APP_ID"
-      giphy = value
     elsif k == "GOOGLE_LOGIN_CLIENT_ID"
       google_client = value
     elsif k == "GOOGLE_LOGIN_SCHEME_ID"
@@ -206,6 +218,10 @@ File.open(path) do |f|
       zendesk_url = value
     elsif k == "ZENDESK_CLIENT_ID"
       zendesk_client_id = value
+    elsif k == "ENCRYPTED_LOGGING_KEY"
+        encrytedlogkey = value
+    elsif k == "TENOR_API_KEY"
+      tenor_key = value
     end
   end
 end
@@ -240,6 +256,10 @@ if !configuration.nil? && ["Release", "Release-Internal"].include?(configuration
   if zendesk_app_id.nil? || zendesk_url.nil? || zendesk_client_id.nil?
       $stderr.puts "warning: Zendesk keys not found"
   end
+  
+  if tenor_key.nil?
+      $stderr.puts "warning: Tenor keys not found"
+  end
 end
 
-print_class(client, secret, sentry, appcenter, giphy, google_client, google_scheme, google_login_server, debugging_key, zendesk_app_id, zendesk_url, zendesk_client_id)
+print_class(client, secret, sentry, appcenter, google_client, google_scheme, google_login_server, debugging_key, zendesk_app_id, zendesk_url, zendesk_client_id, tenor_key, encrytedlogkey)

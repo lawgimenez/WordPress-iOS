@@ -129,6 +129,34 @@ struct CheckmarkRow: ImmuTableRow {
 
 }
 
+struct ActivityIndicatorRow: ImmuTableRow {
+    static let cell = ImmuTableCell.class(WPTableViewCellDefault.self)
+
+    let title: String
+    let animating: Bool
+    let action: ImmuTableAction?
+
+    func configureCell(_ cell: UITableViewCell) {
+        cell.textLabel?.text = title
+
+        let indicator: UIActivityIndicatorView
+        if #available(iOS 13, *) {
+            indicator = UIActivityIndicatorView(style: .medium)
+        } else {
+            indicator = UIActivityIndicatorView(style: .gray)
+        }
+
+        if animating {
+            indicator.startAnimating()
+        }
+
+        cell.accessoryView = indicator
+
+        WPStyleGuide.configureTableViewCell(cell)
+    }
+
+}
+
 struct LinkRow: ImmuTableRow {
     static let cell = ImmuTableCell.class(WPTableViewCellDefault.self)
 
@@ -137,7 +165,7 @@ struct LinkRow: ImmuTableRow {
 
     private static let imageSize = CGSize(width: 20, height: 20)
     private var accessoryImageView: UIImageView {
-        let image = Gridicon.iconOfType(.external, withSize: LinkRow.imageSize)
+        let image = UIImage.gridicon(.external, size: LinkRow.imageSize)
 
         let imageView = UIImageView(image: image)
         imageView.tintColor = WPStyleGuide.cellGridiconAccessoryColor()

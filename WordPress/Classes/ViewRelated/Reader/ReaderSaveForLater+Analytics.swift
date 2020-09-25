@@ -32,7 +32,8 @@ enum ReaderSaveForLaterOrigin {
         }
     }
 
-    fileprivate var viewAllPostsValue: String {
+    // TODO: - READERNAV - Refactor this and ReaderStreamViewController+Helper once the old reader is removed
+    var viewAllPostsValue: String {
         switch self {
         case .savedStream:
             return "post_list_saved_post_notice"
@@ -65,13 +66,13 @@ extension ReaderSaveForLaterAction {
     func trackViewAllSavedPostsAction(origin: ReaderSaveForLaterOrigin) {
         let properties = [ readerSaveForLaterSourceKey: origin.viewAllPostsValue ]
 
-        WPAppAnalytics.track(.readerSavedListViewed, withProperties: properties)
+        WPAnalytics.track(.readerSavedListShown, properties: properties)
     }
 }
 
 extension ReaderMenuViewController {
     func trackSavedPostsNavigation() {
-        WPAppAnalytics.track(.readerSavedListViewed, withProperties: [ readerSaveForLaterSourceKey: ReaderSaveForLaterOrigin.readerMenu.viewAllPostsValue ])
+        WPAnalytics.track(.readerSavedListShown, properties: [ readerSaveForLaterSourceKey: ReaderSaveForLaterOrigin.readerMenu.viewAllPostsValue ])
     }
 }
 
@@ -83,6 +84,10 @@ extension ReaderSavedPostsViewController {
 
 extension ReaderStreamViewController {
     func trackSavedPostNavigation() {
-        WPAppAnalytics.track(.readerSavedPostOpened, withProperties: [ readerSaveForLaterSourceKey: ReaderSaveForLaterOrigin.otherStream.openPostValue ])
+        if FeatureFlag.newReaderNavigation.enabled, contentType == .saved {
+            WPAppAnalytics.track(.readerSavedPostOpened, withProperties: [ readerSaveForLaterSourceKey: ReaderSaveForLaterOrigin.savedStream.openPostValue ])
+        } else {
+            WPAppAnalytics.track(.readerSavedPostOpened, withProperties: [ readerSaveForLaterSourceKey: ReaderSaveForLaterOrigin.otherStream.openPostValue ])
+        }
     }
 }

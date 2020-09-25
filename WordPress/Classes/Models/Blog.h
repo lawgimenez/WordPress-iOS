@@ -8,6 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class BlogSettings;
 @class WPAccount;
 @class WordPressComRestApi;
+@class WordPressOrgRestApi;
 @class WordPressOrgXMLRPCApi;
 @class Role;
 @class QuickStartTourState;
@@ -69,7 +70,9 @@ typedef NS_ENUM(NSUInteger, BlogFeature) {
     /// Does the blog support deleting media?
     BlogFeatureMediaDeletion,
     /// Does the blog support Stock Photos feature (free photos library)
-    BlogFeatureStockPhotos
+    BlogFeatureStockPhotos,
+    /// Does the blog support setting the homepage type and pages?
+    BlogFeatureHomepageSettings
 };
 
 typedef NS_ENUM(NSInteger, SiteVisibility) {
@@ -159,6 +162,7 @@ typedef NS_ENUM(NSInteger, SiteVisibility) {
 @property (nonatomic,   weak,  readonly, nullable) NSArray *sortedConnections;
 @property (nonatomic, readonly, nullable) NSArray<Role *> *sortedRoles;
 @property (nonatomic, strong,  readonly, nullable) WordPressOrgXMLRPCApi *xmlrpcApi;
+@property (nonatomic, strong,  readonly, nullable) WordPressOrgRestApi *wordPressOrgRestApi;
 @property (nonatomic,   weak,  readonly, nullable) NSString       *version;
 @property (nonatomic, strong,  readonly, nullable) NSString       *authToken;
 @property (nonatomic, strong,  readonly, nullable) NSSet *allowedFileTypes;
@@ -186,10 +190,15 @@ typedef NS_ENUM(NSInteger, SiteVisibility) {
 @property (readonly) BOOL hasIcon;
 
 #pragma mark - Blog information
+
+- (BOOL)isAtomic;
+- (BOOL)isWPForTeams;
 - (BOOL)isAutomatedTransfer;
 - (BOOL)isPrivate;
+- (BOOL)isPrivateAtWPCom;
 - (nullable NSArray *)sortedCategories;
 - (nullable id)getOptionValue:(NSString *) name;
+- (void)setValue:(id)value forOption:(NSString *)name;
 - (NSString *)loginUrl;
 - (NSString *)urlWithPath:(NSString *)path;
 - (NSString *)adminUrlWithPath:(NSString *)path;

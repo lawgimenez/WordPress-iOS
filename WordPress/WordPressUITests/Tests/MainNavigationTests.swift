@@ -6,10 +6,9 @@ class MainNavigationTests: XCTestCase {
     override func setUp() {
         setUpTestSuite()
 
-        _ = LoginFlow.login(siteUrl: WPUITestCredentials.testWPcomSiteAddress, username: WPUITestCredentials.testWPcomUsername, password: WPUITestCredentials.testWPcomPassword)
-        mySiteScreen = EditorFlow
-            .toggleBlockEditor(to: .on)
-            .goBackToMySite()
+        _ = LoginFlow.login(siteUrl: WPUITestCredentials.testWPcomSiteAddress, email: WPUITestCredentials.testWPcomUserEmail, password: WPUITestCredentials.testWPcomPassword)
+        mySiteScreen = TabNavComponent()
+         .gotoMySiteScreen()
     }
 
     override func tearDown() {
@@ -19,13 +18,14 @@ class MainNavigationTests: XCTestCase {
     }
 
     func testTabBarNavigation() {
-        mySiteScreen
-            .tabBar.gotoMySitesScreen()
-            .tabBar.gotoBlockEditorScreen()
-            .closeEditor()
+        XCTAssert(MySiteScreen.isLoaded(), "MySitesScreen screen isn't loaded.")
 
         _ = mySiteScreen
             .tabBar.gotoReaderScreen()
+
+        XCTAssert(ReaderScreen.isLoaded(), "Reader screen isn't loaded.")
+
+        _ = mySiteScreen
             .tabBar.gotoNotificationsScreen()
 
         XCTContext.runActivity(named: "Confirm Notifications screen and main navigation bar are loaded.") { (activity) in

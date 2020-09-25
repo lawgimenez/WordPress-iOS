@@ -6,7 +6,7 @@ class EditorAztecTests: XCTestCase {
     override func setUp() {
         setUpTestSuite()
 
-        _ = LoginFlow.loginIfNeeded(siteUrl: WPUITestCredentials.testWPcomSiteAddress, username: WPUITestCredentials.testWPcomUsername, password: WPUITestCredentials.testWPcomPassword)
+        _ = LoginFlow.loginIfNeeded(siteUrl: WPUITestCredentials.testWPcomSiteAddress, email: WPUITestCredentials.testWPcomUserEmail, password: WPUITestCredentials.testWPcomPassword)
         editorScreen = EditorFlow
             .toggleBlockEditor(to: .off)
             .goBackToMySite()
@@ -47,6 +47,10 @@ class EditorAztecTests: XCTestCase {
             .openPostSettings()
             .selectCategory(name: category)
             .addTag(name: tag)
+            .setFeaturedImage()
+            .verifyPostSettings(withCategory: category, withTag: tag, hasImage: true)
+            .removeFeatureImage()
+            .verifyPostSettings(withCategory: category, withTag: tag, hasImage: false)
             .setFeaturedImage()
             .verifyPostSettings(withCategory: category, withTag: tag, hasImage: true)
             .closePostSettings()

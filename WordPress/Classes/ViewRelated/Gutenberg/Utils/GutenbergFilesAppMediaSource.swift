@@ -17,7 +17,6 @@ class GutenbergFilesAppMediaSource: NSObject {
         let docPicker = UIDocumentPickerViewController(documentTypes: uttypeFilters, in: .import)
         docPicker.delegate = self
         docPicker.allowsMultipleSelection = multipleSelection
-        WPStyleGuide.configureDocumentPickerNavBarAppearance()
         origin.present(docPicker, animated: true)
     }
 }
@@ -27,33 +26,32 @@ extension GutenbergFilesAppMediaSource: UIDocumentPickerDelegate {
         defer {
             mediaPickerCallback = nil
         }
-        if let documentURL = urls.first {
-            insertOnBlock(with: documentURL)
-        } else {
+        if urls.count == 0 {
             mediaPickerCallback?(nil)
+        } else {
+            insertOnBlock(with: urls)
         }
     }
 
     func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-        WPStyleGuide.configureNavigationAppearance()
         mediaPickerCallback?(nil)
         mediaPickerCallback = nil
     }
 
-    /// Adds the given image object to the requesting Image Block
-    /// - Parameter asset: Stock Media object to add.
-    func insertOnBlock(with url: URL) {
-        WPStyleGuide.configureNavigationAppearance()
+    func insertOnBlock(with urls: [URL]) {
         guard let callback = mediaPickerCallback else {
             return assertionFailure("Image picked without callback")
         }
 
-        guard let media = self.mediaInserter.insert(exportableAsset: url as NSURL, source: .otherApps) else {
-            return callback([])
-        }
+        let mediaInfo = urls.compactMap({ (url) -> MediaInfo? in
+            guard let media = mediaInserter.insert(exportableAsset: url as NSURL, source: .otherApps) else {
+                return nil
+            }
+            let mediaUploadID = media.gutenbergUploadID
+            return MediaInfo(id: mediaUploadID, url: url.absoluteString, type: media.mediaTypeString)
+        })
 
-        let mediaUploadID = media.gutenbergUploadID
-        callback([MediaInfo(id: mediaUploadID, url: url.absoluteString, type: media.mediaTypeString)])
+        callback(mediaInfo)
     }
 }
 

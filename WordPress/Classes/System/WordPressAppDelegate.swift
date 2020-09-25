@@ -23,7 +23,7 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
         return WPCrashLoggingProvider()
     }()
 
-    @objc var logger: WPLogger?
+    @objc let logger = WPLogger()
     @objc var internetReachability: Reachability?
     @objc var connectionAvailable: Bool = true
 
@@ -34,13 +34,14 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
     private var pingHubManager: PingHubManager?
     private var noticePresenter: NoticePresenter?
     private var bgTask: UIBackgroundTaskIdentifier? = nil
+    private let remoteFeatureFlagStore = RemoteFeatureFlagStore()
+
+    private var mainContext: NSManagedObjectContext {
+        return ContextManager.shared.mainContext
+    }
 
     private var shouldRestoreApplicationState = false
     private lazy var uploadsManager: UploadsManager = {
-        // This is intentionally a `lazy var` to prevent `PostCoordinator.shared` (below) from
-        // triggering an initialization of `ContextManager.shared.mainContext` during the
-        // initialization of this class. This is so any track events in `mainContext`
-        // (e.g. by `NullBlogPropertySanitizer`) will be recorded properly.
 
         // It's not great that we're using singletons here.  This change is a good opportunity to
         // revisit if we can make the coordinators children to another owning object.
@@ -67,6 +68,16 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         window = UIWindow(frame: UIScreen.main.bounds)
 
+        if #available(iOS 13.0, *) {
+            // Overrides the current user interface appearance
+            AppAppearance.overrideAppearance()
+        }
+
+        // Start CrashLogging as soon as possible (in case a crash happens during startup)
+        let dataSource = EventLoggingDataProvider.fromDDFileLogger(logger.fileLogger)
+        let eventLogging = EventLogging(dataSource: dataSource, delegate: crashLoggingProvider.loggingUploadDelegate)
+        CrashLogging.start(withDataProvider: crashLoggingProvider, eventLogging: eventLogging)
+
         // Configure WPCom API overrides
         configureWordPressComApi()
 
@@ -74,11 +85,12 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
 
         configureReachability()
         configureSelfHostedChallengeHandler()
+        remoteFeatureFlagStore.update()
 
         window?.makeKeyAndVisible()
 
         // Restore a disassociated account prior to fixing tokens.
-        AccountService(managedObjectContext: ContextManager.shared.mainContext).restoreDisassociatedAccountIfNecessary()
+        AccountService(managedObjectContext: mainContext).restoreDisassociatedAccountIfNecessary()
 
         customizeAppearance()
 
@@ -94,17 +106,6 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         DDLogInfo("didFinishLaunchingWithOptions state: \(application.applicationState)")
-
-        let queue = DispatchQueue(label: "asd", qos: .background)
-        let deviceInformation = TracksDeviceInformation()
-
-        queue.async {
-            let height = deviceInformation.statusBarHeight
-            let orientation = deviceInformation.orientation!
-
-            print("Height: \(height); orientation: \(orientation)")
-        }
-
 
         InteractiveNotificationsManager.shared.registerForUserNotifications()
         showWelcomeScreenIfNeeded(animated: false)
@@ -232,10 +233,6 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
         // Local notifications
         addNotificationObservers()
 
-        logger = WPLogger()
-
-        CrashLogging.start(withDataProvider: crashLoggingProvider)
-
         configureAppCenterSDK()
         configureAppRatingUtility()
         configureAnalytics()
@@ -280,9 +277,11 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func mergeDuplicateAccountsIfNeeded() {
-        let context = ContextManager.shared.mainContext
-        context.perform {
-            AccountService(managedObjectContext: ContextManager.shared.mainContext).mergeDuplicatesIfNecessary()
+        mainContext.perform { [weak self] in
+            guard let self = self else {
+                return
+            }
+            AccountService(managedObjectContext: self.mainContext).mergeDuplicatesIfNecessary()
         }
     }
 
@@ -366,8 +365,7 @@ extension WordPressAppDelegate {
 extension WordPressAppDelegate {
 
     func configureAnalytics() {
-        let context = ContextManager.sharedInstance().mainContext
-        let accountService = AccountService(managedObjectContext: context)
+        let accountService = AccountService(managedObjectContext: mainContext)
 
         analytics = WPAppAnalytics(accountService: accountService,
                                    lastVisibleScreenBlock: { [weak self] in
@@ -456,7 +454,9 @@ extension WordPressAppDelegate {
                 return
         }
 
-        UniversalLinkRouter.shared.handle(url: url)
+        trackDeepLink(for: url) { url in
+            UniversalLinkRouter.shared.handle(url: url)
+        }
     }
 
     @objc func setupNetworkActivityIndicator() {
@@ -468,6 +468,31 @@ extension WordPressAppDelegate {
             Environment.replaceEnvironment(wordPressComApiBase: baseUrl)
         }
     }
+}
+
+// MARK: - Deep Link Handling
+
+extension WordPressAppDelegate {
+
+    private func trackDeepLink(for url: URL, completion: @escaping ((URL) -> Void)) {
+        guard isIterableDeepLink(url) else {
+            completion(url)
+            return
+        }
+
+        let task = URLSession.shared.dataTask(with: url) {(_, response, error) in
+            if let url = response?.url {
+                completion(url)
+            }
+        }
+        task.resume()
+    }
+
+    private func isIterableDeepLink(_ url: URL) -> Bool {
+        return url.absoluteString.contains(WordPressAppDelegate.iterableDomain)
+    }
+
+    private static let iterableDomain = "links.wp.a8cmail.com"
 }
 
 // MARK: - UIAppearance
@@ -602,8 +627,6 @@ extension WordPressAppDelegate {
 
         let extraDebug = UserDefaults.standard.bool(forKey: "extra_debug")
 
-        let context = ContextManager.sharedInstance().mainContext
-
         let detailedVersionNumber = Bundle(for: type(of: self)).detailedVersionNumber() ?? unknown
 
         DDLogInfo("===========================================================================")
@@ -631,7 +654,7 @@ extension WordPressAppDelegate {
         DDLogInfo("APN token: \(PushNotificationsManager.shared.deviceToken ?? "None")")
         DDLogInfo("Launch options: \(String(describing: launchOptions ?? [:]))")
 
-        AccountHelper.logBlogsAndAccounts(context: context)
+        AccountHelper.logBlogsAndAccounts(context: mainContext)
         DDLogInfo("===========================================================================")
     }
 
@@ -690,11 +713,6 @@ extension WordPressAppDelegate {
                        object: nil)
 
         nc.addObserver(self,
-                       selector: #selector(handleUIContentSizeCategoryDidChangeNotification(_:)),
-                       name: UIContentSizeCategory.didChangeNotification,
-                       object: nil)
-
-        nc.addObserver(self,
                        selector: #selector(saveRecentSitesForExtensions),
                        name: .WPRecentSitesChanged,
                        object: nil)
@@ -729,10 +747,6 @@ extension WordPressAppDelegate {
     @objc fileprivate func handleLowMemoryWarningNotification(_ notification: NSNotification) {
         WPAnalytics.track(.lowMemoryWarning)
     }
-
-    @objc fileprivate func handleUIContentSizeCategoryDidChangeNotification(_ notification: NSNotification) {
-        customizeAppearanceForTextElements()
-    }
 }
 
 // MARK: - Extensions
@@ -740,8 +754,7 @@ extension WordPressAppDelegate {
 extension WordPressAppDelegate {
 
     func setupWordPressExtensions() {
-        let context = ContextManager.sharedInstance().mainContext
-        let accountService = AccountService(managedObjectContext: context)
+        let accountService = AccountService(managedObjectContext: mainContext)
         accountService.setupAppExtensionsWithDefaultAccount()
 
         let maxImagesize = MediaSettings().maxImageSizeSetting
@@ -759,8 +772,7 @@ extension WordPressAppDelegate {
     // MARK: - Share Extension
 
     func setupShareExtensionToken() {
-        let context = ContextManager.sharedInstance().mainContext
-        let accountService = AccountService(managedObjectContext: context)
+        let accountService = AccountService(managedObjectContext: mainContext)
 
         if let account = accountService.defaultWordPressComAccount(), let authToken = account.authToken {
             ShareExtensionService.configureShareExtensionToken(authToken)
@@ -780,8 +792,7 @@ extension WordPressAppDelegate {
     // MARK: - Notification Service Extension
 
     func configureNotificationExtension() {
-        let context = ContextManager.sharedInstance().mainContext
-        let accountService = AccountService(managedObjectContext: context)
+        let accountService = AccountService(managedObjectContext: mainContext)
 
         if let account = accountService.defaultWordPressComAccount(), let authToken = account.authToken {
             NotificationSupportService.insertContentExtensionToken(authToken)
@@ -808,13 +819,17 @@ extension WordPressAppDelegate {
         window?.backgroundColor = .black
         window?.tintColor = WPStyleGuide.wordPressBlue()
 
+        // iOS 14 started rendering backgrounds for stack views, when previous versions
+        // of iOS didn't show them. This is a little hacky, but ensures things keep
+        // looking the same on newer versions of iOS.
+        UIStackView.appearance().backgroundColor = .clear
+
         WPStyleGuide.configureTabBarAppearance()
         WPStyleGuide.configureNavigationAppearance()
         WPStyleGuide.configureDefaultTint()
         WPStyleGuide.configureLightNavigationBarAppearance()
 
         UISegmentedControl.appearance().setTitleTextAttributes( [NSAttributedString.Key.font: WPStyleGuide.regularTextFont()], for: .normal)
-        UIToolbar.appearance().barTintColor = .primary
         UISwitch.appearance().onTintColor = .primary
 
         let navReferenceAppearance = UINavigationBar.appearance(whenContainedInInstancesOf: [UIReferenceLibraryViewController.self])
@@ -836,7 +851,6 @@ extension WordPressAppDelegate {
         barItemAppearance.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.white, NSAttributedString.Key.font: WPFontManager.systemSemiBoldFont(ofSize: 16.0)], for: .disabled)
         UICollectionView.appearance(whenContainedInInstancesOf: [WPMediaPickerViewController.self]).backgroundColor = .neutral(.shade5)
 
-
         let cellAppearance = WPMediaCollectionViewCell.appearance(whenContainedInInstancesOf: [WPMediaPickerViewController.self])
         cellAppearance.loadingBackgroundColor = .listBackground
         cellAppearance.placeholderBackgroundColor = .neutral(.shade70)
@@ -844,19 +858,8 @@ extension WordPressAppDelegate {
         cellAppearance.setCellTintColor(.primary)
 
         UIButton.appearance(whenContainedInInstancesOf: [WPActionBar.self]).tintColor = .primary
-
-        customizeAppearanceForTextElements()
-    }
-
-    private func customizeAppearanceForTextElements() {
-        let maximumPointSize = WPStyleGuide.maxFontSize
-
-        UINavigationBar.appearance().titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white,
-                                                            NSAttributedString.Key.font: WPStyleGuide.fixedFont(for: UIFont.TextStyle.headline, weight: UIFont.Weight.bold)]
-
-        WPStyleGuide.configureSearchBarTextAppearance()
-
-        SVProgressHUD.setFont(WPStyleGuide.fontForTextStyle(UIFont.TextStyle.headline, maximumPointSize: maximumPointSize))
+        WPActionBar.appearance().barBackgroundColor = .basicBackground
+        WPActionBar.appearance().lineColor = .basicBackground
     }
 }
 

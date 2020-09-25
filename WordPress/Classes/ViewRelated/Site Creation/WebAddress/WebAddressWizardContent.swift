@@ -124,13 +124,11 @@ final class WebAddressWizardContent: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         resignTextFieldResponderIfNeeded()
-        disallowTextFieldFirstResponder()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         restoreSearchIfNeeded()
-        allowTextFieldFirstResponder()
         postScreenChangedForVoiceOver()
     }
 
@@ -141,40 +139,18 @@ final class WebAddressWizardContent: UIViewController {
         clearContent()
     }
 
-    // MARK: Workaround: Text Field First Responder Issues
-
-    /// This method is uses as a workaround for what appears to be an SDK bug.
-    ///
-    /// There's an issue that's causing `textField.resignFirstResponder()` to be ignored when called from
-    /// within `viewDidDisappear(animated:)`.  This method makes it so that the text field just can't
-    /// have first responder whenever we don't want it to.
-    ///
-    /// Issue: https://github.com/wordpress-mobile/WordPress-iOS/issues/11702
-    ///
-    private func allowTextFieldFirstResponder() {
+    private func textFieldResignFirstResponder() {
         guard let header = self.table.tableHeaderView as? TitleSubtitleTextfieldHeader else {
             return
         }
 
-        header.textField.allowFirstResponderStatus = true
-    }
-
-    /// This method makes it impossible for the text field to become first responder.
-    ///
-    /// Read the documentation of `allowTextFieldFirstResponder` for more details.
-    ///
-    private func disallowTextFieldFirstResponder() {
-        guard let header = self.table.tableHeaderView as? TitleSubtitleTextfieldHeader else {
-            return
-        }
-
-        header.textField.allowFirstResponderStatus = false
+        header.textField.resignFirstResponder()
     }
 
     // MARK: Private behavior
 
     private func applyTitle() {
-        title = NSLocalizedString("3 of 3", comment: "Site creation. Step 3. Screen title")
+        title = NSLocalizedString("2 of 2", comment: "Site creation. Step 2. Screen title")
     }
 
     private func clearContent() {
@@ -200,7 +176,9 @@ final class WebAddressWizardContent: UIViewController {
             return
         }
 
+        updateIcon(isLoading: true)
         service.addresses(for: searchTerm, segmentID: segmentID) { [weak self] results in
+            self?.updateIcon(isLoading: false)
             switch results {
             case .failure(let error):
                 self?.handleError(error)
@@ -302,7 +280,6 @@ final class WebAddressWizardContent: UIViewController {
 
         let textField = header.textField
         textField.resignFirstResponder()
-        textField.allowFirstResponderStatus = false
     }
 
     private func restoreSearchIfNeeded() {
@@ -314,14 +291,11 @@ final class WebAddressWizardContent: UIViewController {
     }
 
     private func prepareViewIfNeeded() {
-        guard WPDeviceIdentification.isiPhone(), let header = self.table.tableHeaderView as? TitleSubtitleTextfieldHeader else {
+        guard let header = self.table.tableHeaderView as? TitleSubtitleTextfieldHeader else {
             return
         }
 
         let textField = header.textField
-        guard let inputText = textField.text, !inputText.isEmpty else {
-            return
-        }
         textField.becomeFirstResponder()
     }
 
@@ -451,6 +425,13 @@ final class WebAddressWizardContent: UIViewController {
     }
 
     // MARK: - Search logic
+
+    func updateIcon(isLoading: Bool) {
+        guard let header = self.table.tableHeaderView as? TitleSubtitleTextfieldHeader else {
+            return
+        }
+        header.textField.setIcon(isLoading: isLoading)
+    }
 
     private func search(withInputFrom textField: UITextField) {
         guard let query = query(from: textField), query.isEmpty == false else {

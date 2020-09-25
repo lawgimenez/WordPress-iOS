@@ -26,10 +26,13 @@ NSString * const ActiveModulesKeySharingButtons = @"sharedaddy";
 NSString * const OptionsKeyActiveModules = @"active_modules";
 NSString * const OptionsKeyPublicizeDisabled = @"publicize_permanently_disabled";
 NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
+NSString * const OptionsKeyIsAtomic = @"is_wpcom_atomic";
+NSString * const OptionsKeyIsWPForTeams = @"is_wpforteams_site";
 
 @interface Blog ()
 
 @property (nonatomic, strong, readwrite) WordPressOrgXMLRPCApi *xmlrpcApi;
+@property (nonatomic, strong, readwrite) WordPressOrgRestApi *wordPressOrgRestApi;
 
 @end
 
@@ -87,6 +90,7 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
 @synthesize videoPressEnabled;
 @synthesize isSyncingMedia;
 @synthesize xmlrpcApi = _xmlrpcApi;
+@synthesize wordPressOrgRestApi = _wordPressOrgRestApi;
 
 #pragma mark - NSManagedObject subclass methods
 
@@ -95,6 +99,7 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
     [super prepareForDeletion];
 
     [_xmlrpcApi invalidateAndCancelTasks];
+    [_wordPressOrgRestApi invalidateAndCancelTasks];
 }
 
 - (void)didTurnIntoFault
@@ -103,12 +108,24 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
 
     // Clean up instance variables
     self.xmlrpcApi = nil;
+    self.wordPressOrgRestApi = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-
 #pragma mark -
 #pragma mark Custom methods
+
+- (BOOL)isAtomic
+{
+    NSNumber *value = (NSNumber *)[self getOptionValue:OptionsKeyIsAtomic];
+    return [value boolValue];
+}
+
+- (BOOL)isWPForTeams
+{
+    NSNumber *value = (NSNumber *)[self getOptionValue:OptionsKeyIsWPForTeams];
+    return [value boolValue];
+}
 
 - (BOOL)isAutomatedTransfer
 {
@@ -116,27 +133,14 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
     return [value boolValue];
 }
 
-- (NSString *)icon
-{
-    [self willAccessValueForKey:@"icon"];
-    NSString *icon = [self primitiveValueForKey:@"icon"];
-    [self didAccessValueForKey:@"icon"];
-
-    if (icon) {
-        return icon;
-    }
-
-    // if the icon is not set we can use the host url to construct it
-    NSString *hostUrl = [[NSURL URLWithString:self.xmlrpc] host];
-    if (hostUrl == nil) {
-        hostUrl = self.xmlrpc;
-    }
-    return hostUrl;
-}
-
 // Used as a key to store passwords, if you change the algorithm, logins will break
 - (NSString *)displayURL
 {
+    if (self.url == nil) {
+        DDLogInfo(@"Blog display URL is nil");
+        return nil;
+    }
+    
     NSError *error = nil;
     NSRegularExpression *protocol = [NSRegularExpression regularExpressionWithPattern:@"http(s?)://" options:NSRegularExpressionCaseInsensitive error:&error];
     NSString *result = [NSString stringWithFormat:@"%@", [protocol stringByReplacingMatchesInString:self.url options:0 range:NSMakeRange(0, [self.url length]) withTemplate:@""]];
@@ -316,10 +320,18 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
     return formatText;
 }
 
-// WP.COM private blog.
+/// Call this method to know whether the blog is private.
+///
 - (BOOL)isPrivate
 {
-    return (self.isHostedAtWPcom && [self.settings.privacy isEqualToNumber:@(SiteVisibilityPrivate)]);
+    return [self.settings.privacy isEqualToNumber:@(SiteVisibilityPrivate)];
+}
+
+/// Call this method to know whether the blog is private AND hosted at WP.com.
+///
+- (BOOL)isPrivateAtWPCom
+{
+    return (self.isHostedAtWPcom && [self isPrivate]);
 }
 
 - (SiteVisibility)siteVisibility
@@ -423,7 +435,7 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
 {
     if (self.username) {
         return self.username;
-    } else if (self.account && self.isHostedAtWPcom) {
+    } else if (self.account && self.isAccessibleThroughWPCom) {
         return self.account.username;
     } else {
         // FIXME: Figure out how to get the self hosted username when using Jetpack REST (@koke 2015-06-15)
@@ -502,6 +514,8 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
             return [self supportsRestApi] && [self isAdmin];
         case BlogFeatureMediaDeletion:
             return [self isAdmin];
+        case BlogFeatureHomepageSettings:
+            return [self supportsRestApi] && [self isAdmin];
     }
 }
 
@@ -711,6 +725,14 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
     return _xmlrpcApi;
 }
 
+- (WordPressOrgRestApi *)wordPressOrgRestApi
+{
+    if (_wordPressOrgRestApi == nil) {
+        _wordPressOrgRestApi = [[WordPressOrgRestApi alloc] initWithBlog:self];
+    }
+    return _wordPressOrgRestApi;
+}
+
 - (WordPressComRestApi *)wordPressComRestApi
 {
     if (self.account) {
@@ -782,6 +804,22 @@ NSString * const OptionsKeyIsAutomatedTransfer = @"is_automated_transfer";
         optionValue = currentOption[@"value"];
     }];
     return optionValue;
+}
+
+- (void)setValue:(id)value forOption:(NSString *)name
+{
+    [self.managedObjectContext performBlockAndWait:^{
+        if ( self.options == nil || (self.options.count == 0) ) {
+            return;
+        }
+
+        NSMutableDictionary *mutableOptions = [self.options mutableCopy];
+
+        NSDictionary *valueDict = @{ @"value": value };
+        mutableOptions[name] = valueDict;
+
+        self.options = [NSDictionary dictionaryWithDictionary:mutableOptions];
+    }];
 }
 
 @end

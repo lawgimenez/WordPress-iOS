@@ -74,7 +74,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
     }
 
     private var postViewIcon: UIImage? {
-        return isCompact ? UIImage(named: "icon-post-view-card") : Gridicon.iconOfType(.listUnordered)
+        return isCompact ? UIImage(named: "icon-post-view-card") : .gridicon(.listUnordered)
     }
 
     private lazy var postActionSheet: PostActionSheet = {
@@ -155,11 +155,16 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
 
         title = NSLocalizedString("Blog Posts", comment: "Title of the screen showing the list of posts for a blog.")
 
-        configureCompactOrDefault()
         configureFilterBarTopConstraint()
         updateGhostableTableViewOptions()
 
         configureNavigationButtons()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+
+        configureCompactOrDefault()
     }
 
     func configureNavigationButtons() {
@@ -213,7 +218,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
 
     /// Update the `GhostOptions` to correctly show compact or default cells
     private func updateGhostableTableViewOptions() {
-        let ghostOptions = GhostOptions(displaysSectionHeader: false, reuseIdentifier: postCellIdentifier, rowsPerSection: [10])
+        let ghostOptions = GhostOptions(displaysSectionHeader: false, reuseIdentifier: postCellIdentifier, rowsPerSection: [50])
         let style = GhostStyle(beatDuration: GhostStyle.Defaults.beatDuration,
                                beatStartColor: .placeholderElement,
                                beatEndColor: .placeholderElementFaded)
@@ -298,14 +303,16 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
     }
 
     func showCompactOrDefault() {
-        tableView.reloadSections([0], with: .automatic)
-
         updateGhostableTableViewOptions()
-        ghostableTableView.reloadSections([0], with: .automatic)
 
         postsViewButtonItem.accessibilityLabel = NSLocalizedString("List style", comment: "The accessibility label for the list style button in the Post List.")
         postsViewButtonItem.accessibilityValue = isCompact ? NSLocalizedString("Compact", comment: "Accessibility indication that the current Post List style is currently Compact.") : NSLocalizedString("Expanded", comment: "Accessibility indication that the current Post List style is currently Expanded.")
         postsViewButtonItem.image = postViewIcon
+
+        if isViewOnScreen() {
+            tableView.reloadSections([0], with: .automatic)
+            ghostableTableView.reloadSections([0], with: .automatic)
+        }
     }
 
     // Mark - Layout Methods
@@ -516,7 +523,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         let editor = EditPostViewController(blog: blog)
         editor.modalPresentationStyle = .fullScreen
         present(editor, animated: false, completion: nil)
-        WPAppAnalytics.track(.editorCreatedPost, withProperties: ["tap_source": "posts_view"], with: blog)
+        WPAppAnalytics.track(.editorCreatedPost, withProperties: ["tap_source": "posts_view", WPAppAnalyticsKeyPostType: "post"], with: blog)
     }
 
     private func editPost(apost: AbstractPost) {
@@ -660,6 +667,15 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
 
     func cancelAutoUpload(_ post: AbstractPost) {
         PostCoordinator.shared.cancelAutoUploadOf(post)
+    }
+
+    func share(_ apost: AbstractPost, fromView view: UIView) {
+        guard let post = apost as? Post else {
+            return
+        }
+
+        let shareController = PostSharingController()
+        shareController.sharePost(post, fromView: view, inViewController: self)
     }
 
     // MARK: - Searching

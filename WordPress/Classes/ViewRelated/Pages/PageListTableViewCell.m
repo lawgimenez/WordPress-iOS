@@ -114,7 +114,7 @@ static CGFloat const FeaturedImageSize = 120.0;
     self.titleLabel.textColor = [UIColor murielText];
     self.badgesLabel.textColor = [UIColor murielTextSubtle];
     self.menuButton.tintColor = [UIColor murielTextSubtle];
-    [self.menuButton setImage:[Gridicon iconOfType:GridiconTypeEllipsis] forState:UIControlStateNormal];
+    [self.menuButton setImage:[UIImage gridiconOfType:GridiconTypeEllipsis] forState:UIControlStateNormal];
 
     self.backgroundColor = [UIColor murielNeutral5];
     self.contentView.backgroundColor = [UIColor murielNeutral5];
@@ -147,9 +147,19 @@ static CGFloat const FeaturedImageSize = 120.0;
 
     NSMutableArray<NSString *> *badges = [NSMutableArray new];
 
-    NSString *timestamp = [self.post isScheduled] ? [self.dateFormatter stringFromDate:self.post.dateCreated] : [self.post.dateCreated mediumString];
-    [badges addObject:timestamp];
-    
+    if (self.post.dateCreated != nil) {
+        NSString *timestamp = [self.post isScheduled] ? [self.dateFormatter stringFromDate:self.post.dateCreated] : [self.post.dateCreated mediumString];
+        [badges addObject:timestamp];
+    }
+
+    if (page.isSiteHomepage) {
+        [badges addObject:NSLocalizedString(@"Homepage", @"Title of the Homepage Badge")];
+    }
+
+    if (page.isSitePostsPage) {
+        [badges addObject:NSLocalizedString(@"Posts page", @"Title of the Posts Page Badge")];
+    }
+
     if (page.hasPrivateState) {
         [badges addObject:NSLocalizedString(@"Private", @"Title of the Private Badge")];
     } else if (page.hasPendingReviewState) {

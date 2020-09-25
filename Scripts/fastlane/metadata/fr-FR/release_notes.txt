@@ -1,16 +1,11 @@
-Commenter :
-- Correction d’un bug qui sélectionnait la mauvaise ligne lors de l’édition de commentaires.
-- Correction d’un bug qui affichait le balisage HTML dans le contenu d’un commentaire.
-- Correction d’un problème qui n’affichait plus les commentaires dans le Lecteur.
+Votre expérience du Lecteur peut désormais être personnalisée grâce à un nouveau flux Découvrir qui reflète vos intérêts.
 
-Publication :
-- vous pouvez à présent recadrer, zoomer en avant/arrière et tourner les images dans un article.
-- L’app inclus maintenant un mode d’aperçu bureau sur iPhone et d’aperçu mobile sur iPad. L’aperçu d’article obtient aussi nouvelle navigation, « Ouvrir dans Safari » et des options de partage.
-- Beaucoup d’amélioration de l’éditeur de bloc : Ajout via une longue pression d’une icône  pour insérer des blocs avant/ après et un bouton « Modification » en superposition sur un bloc image sélectionné. L’éditeur réessaiera de charger les images après un problème de connexion. Et la galerie de blocs prend en charge maintenant les options de taille d’image.
-- Nous avons corrigé un bug qui pouvait désactiver les commentaires sur un brouillon d’article lors de son aperçu.
+Les réglages du bloc dans l’éditeur de blocs reflètent désormais immédiatement les modifications apportées aux curseurs du menu.
 
-Inscription et connexion : 
-- L’inscription et la connexion via lien magique prend en charge plusieurs apps de messagerie. Toucher le bouton « Ouvrir l’e-mail » vous présentera un liste d’apps d’e-mails installé à choisir.
+L’expérience d'inscription et de connexion est améliorée grâce aux indications guidant l’utilisateur durant la procédure et à la connexion d’un site auto-hébergé.
 
-Lecteur :
-- Les apps prennent maintenant en charge le reblogue d’articles ! Toucher le nouveau bouton « Rebloguer » dans la barre d’actions de l’article pour choisir un de vos sites sur lequel publier et ouvrir l’éditeur de votre choix avec le contenu collé depuis l’article original.
+Une nouvelle façon de se connecter grâce à la fonctionnalité Trousseau d’accès iCloud est désormais disponible : un gestionnaire de mots de passe qui se rappelle vos comptes et mots de passe WP.com.
+
+Ne ratez rien ! Vous pouvez désormais suivre des conversations sur des sites P2.
+
+Nous avons également réduit l'utilisation de la mémoire lors du marquage d'une image. L’édition de médias ne provoque plus de plantage.

@@ -69,17 +69,26 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
     [mergedProperties addEntriesFromDictionary:eventPair.properties];
     [mergedProperties addEntriesFromDictionary:properties];
 
-    if (eventPair.properties == nil && properties == nil) {
-        DDLogInfo(@"🔵 Tracked: %@", eventPair.eventName);
+    [self trackString:eventPair.eventName withProperties:mergedProperties];
+}
+
+- (void)trackString:(NSString *)event
+{
+    [self trackString:event withProperties:nil];
+}
+
+- (void)trackString:(NSString *)event withProperties:(NSDictionary *)properties {
+    if (properties == nil) {
+        DDLogInfo(@"🔵 Tracked: %@", event);
     } else {
-        NSArray<NSString *> *propertyKeys = [[mergedProperties allKeys] sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+        NSArray<NSString *> *propertyKeys = [[properties allKeys] sortedArrayUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
         NSString *propertiesDescription = [[propertyKeys wp_map:^NSString *(NSString *key) {
-            return [NSString stringWithFormat:@"%@: %@", key, mergedProperties[key]];
+            return [NSString stringWithFormat:@"%@: %@", key, properties[key]];
         }] componentsJoinedByString:@", "];
-        DDLogInfo(@"🔵 Tracked: %@ <%@>", eventPair.eventName, propertiesDescription);
+        DDLogInfo(@"🔵 Tracked: %@ <%@>", event, propertiesDescription);
     }
 
-    [self.tracksService trackEventName:eventPair.eventName withCustomProperties:mergedProperties];
+    [self.tracksService trackEventName:event withCustomProperties:properties];
 }
 
 - (void)beginSession
@@ -437,10 +446,6 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
         case WPAnalyticsStatDomainCreditRedemptionTapped:
             eventName = @"domain_credit_redemption_tapped";
             break;
-        case WPAnalyticsStatEditorAddedPhotoViaGiphy:
-            eventName = @"editor_photo_added";
-            eventProperties = @{ @"via" : @"giphy" };
-            break;
         case WPAnalyticsStatEditorAddedPhotoViaLocalLibrary:
             eventName = @"editor_photo_added";
             eventProperties = @{ @"via" : @"local_library" };
@@ -699,15 +704,6 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
         case WPAnalyticsStatEnhancedSiteCreationErrorShown:
             eventName = @"enhanced_site_creation_error_shown";
             break;
-        case WPAnalyticsStatGiphyAccessed:
-            eventName = @"giphy_accessed";
-            break;
-        case WPAnalyticsStatGiphySearched:
-            eventName = @"giphy_searched";
-            break;
-        case WPAnalyticsStatGiphyUploaded:
-            eventName = @"giphy_uploaded";
-            break;
         case WPAnalyticsStatGravatarCropped:
             eventName = @"me_gravatar_cropped";
             break;
@@ -852,12 +848,6 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
         case WPAnalyticsStatLowMemoryWarning:
             eventName = @"application_low_memory_warning";
             break;
-        case WPAnalyticsStatMediaEditorShown:
-            eventName = @"media_editor_shown";
-            break;
-        case WPAnalyticsStatMediaEditorUsed:
-            eventName = @"media_editor_used";
-            break;
         case WPAnalyticsStatMediaLibraryDeletedItems:
             eventName = @"media_library_deleted_items";
             break;
@@ -876,10 +866,6 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
         case WPAnalyticsStatMediaLibraryAddedPhotoViaDeviceLibrary:
             eventName = @"media_library_photo_added";
             eventProperties = @{ @"via" : @"device_library" };
-            break;
-        case WPAnalyticsStatMediaLibraryAddedPhotoViaGiphy:
-            eventName = @"media_library_photo_added";
-            eventProperties = @{ @"via" : @"giphy" };
             break;
         case WPAnalyticsStatMediaLibraryAddedPhotoViaOtherApps:
             eventName = @"media_library_photo_added";
@@ -958,15 +944,6 @@ NSString *const TracksUserDefaultsLoggedInUserIDKey = @"TracksLoggedInUserID";
             break;
         case WPAnalyticsStatMySitesTabAccessed:
             eventName = @"my_site_tab_accessed";
-            break;
-        case WPAnalyticsStatNewsCardViewed:
-            eventName = @"news_card_shown";
-            break;
-        case WPAnalyticsStatNewsCardDismissed:
-            eventName = @"news_card_dismissed";
-            break;
-        case WPAnalyticsStatNewsCardRequestedExtendedInfo:
-            eventName = @"news_card_extended_info_requested";
             break;
         case WPAnalyticsStatNotificationsCommentApproved:
             eventName = @"notifications_approved";

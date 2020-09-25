@@ -71,7 +71,7 @@ class MediaLibraryViewController: WPMediaPickerViewController {
         options.showSearchBar = true
         options.showActionBar = false
         options.badgedUTTypes = [String(kUTTypeGIF)]
-        options.preferredStatusBarStyle = .lightContent
+        options.preferredStatusBarStyle = WPStyleGuide.preferredStatusBarStyle
 
         return options
     }
@@ -94,21 +94,6 @@ class MediaLibraryViewController: WPMediaPickerViewController {
         if let collectionView = collectionView {
             WPStyleGuide.configureColors(view: view, collectionView: collectionView)
         }
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-
-        resetNavigationColors()
-    }
-
-    /*
-     This is to restore the navigation bar colors after the UIDocumentPickerViewController has been dismissed,
-     either by uploading media or canceling. Doing this in the UIDocumentPickerDelegate methods either did nothing
-     or the resetting wasn't permanent.
-     */
-    fileprivate func resetNavigationColors() {
-        WPStyleGuide.configureNavigationAppearance()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -137,7 +122,7 @@ class MediaLibraryViewController: WPMediaPickerViewController {
         if isEditing {
             navigationItem.setLeftBarButton(UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(editTapped)), animated: false)
 
-            let trashButton = UIBarButtonItem(image: Gridicon.iconOfType(.trash), style: .plain, target: self, action: #selector(trashTapped))
+            let trashButton = UIBarButtonItem(image: .gridicon(.trash), style: .plain, target: self, action: #selector(trashTapped))
             navigationItem.setRightBarButtonItems([trashButton], animated: true)
             navigationItem.rightBarButtonItem?.isEnabled = false
         } else {
@@ -610,6 +595,15 @@ extension MediaLibraryViewController: WPMediaPickerViewControllerDelegate {
 
         updateViewState(for: pickerDataSource.numberOfAssets())
     }
+
+    func mediaPickerController(_ picker: WPMediaPickerViewController, handleError error: Error) -> Bool {
+        let nserror = error as NSError
+        if let mediaLibrary = self.blog.media, !mediaLibrary.isEmpty {
+            let title = NSLocalizedString("Unable to Sync", comment: "Title of error prompt shown when a sync the user initiated fails.")
+            WPError.showNetworkingNotice(title: title, error: nserror)
+        }
+        return true
+    }
 }
 
 // MARK: - State restoration
@@ -670,19 +664,19 @@ extension MediaLibraryViewController: StockPhotosPickerDelegate {
     }
 }
 
-// MARK: Giphy Picker Delegate
+// MARK: Tenor Picker Delegate
 
-extension MediaLibraryViewController: GiphyPickerDelegate {
-    func giphyPicker(_ picker: GiphyPicker, didFinishPicking assets: [GiphyMedia]) {
+extension MediaLibraryViewController: TenorPickerDelegate {
+    func tenorPicker(_ picker: TenorPicker, didFinishPicking assets: [TenorMedia]) {
         guard assets.count > 0 else {
             return
         }
 
         let mediaCoordinator = MediaCoordinator.shared
-        assets.forEach { giphyMedia in
-            let info = MediaAnalyticsInfo(origin: .mediaLibrary(.giphy), selectionMethod: .fullScreenPicker)
-            mediaCoordinator.addMedia(from: giphyMedia, to: blog, analyticsInfo: info)
-            WPAnalytics.track(.giphyUploaded)
+        assets.forEach { tenorMedia in
+            let info = MediaAnalyticsInfo(origin: .mediaLibrary(.tenor), selectionMethod: .fullScreenPicker)
+            mediaCoordinator.addMedia(from: tenorMedia, to: blog, analyticsInfo: info)
+            WPAnalytics.track(.tenorUploaded)
         }
     }
 }

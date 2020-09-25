@@ -3,13 +3,33 @@ import Gridicons
 import UIKit
 import WebKit
 
-class WebKitViewController: UIViewController {
+protocol WebKitAuthenticatable {
+    var authenticator: RequestAuthenticator? { get }
+    func authenticatedRequest(for url: URL, on webView: WKWebView, completion: @escaping (URLRequest) -> Void)
+}
+
+extension WebKitAuthenticatable {
+    func authenticatedRequest(for url: URL, on webView: WKWebView, completion: @escaping (URLRequest) -> Void) {
+        guard let authenticator = authenticator else {
+            return completion(URLRequest(url: url))
+        }
+
+        DispatchQueue.main.async {
+            let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+            authenticator.request(url: url, cookieJar: cookieStore) { (request) in
+                completion(request)
+            }
+        }
+    }
+}
+
+class WebKitViewController: UIViewController, WebKitAuthenticatable {
     @objc let webView: WKWebView
     @objc let progressView = WebProgressView()
     @objc let titleView = NavigationTitleView()
 
     @objc lazy var backButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.chevronLeft).imageFlippedForRightToLeftLayoutDirection(),
+        let button = UIBarButtonItem(image: UIImage.gridicon(.chevronLeft).imageFlippedForRightToLeftLayoutDirection(),
                                style: .plain,
                                target: self,
                                action: #selector(goBack))
@@ -17,7 +37,7 @@ class WebKitViewController: UIViewController {
         return button
     }()
     @objc lazy var forwardButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.chevronRight),
+        let button = UIBarButtonItem(image: .gridicon(.chevronRight),
                                style: .plain,
                                target: self,
                                action: #selector(goForward))
@@ -25,7 +45,7 @@ class WebKitViewController: UIViewController {
         return button
     }()
     @objc lazy var shareButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.shareIOS),
+        let button = UIBarButtonItem(image: .gridicon(.shareiOS),
                                style: .plain,
                                target: self,
                                action: #selector(share))
@@ -33,7 +53,7 @@ class WebKitViewController: UIViewController {
         return button
     }()
     @objc lazy var safariButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.globe),
+        let button = UIBarButtonItem(image: .gridicon(.globe),
                                style: .plain,
                                target: self,
                                action: #selector(openInSafari))
@@ -42,12 +62,12 @@ class WebKitViewController: UIViewController {
         return button
     }()
     @objc lazy var refreshButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.refresh), style: .plain, target: self, action: #selector(WebKitViewController.refresh))
+        let button = UIBarButtonItem(image: .gridicon(.refresh), style: .plain, target: self, action: #selector(WebKitViewController.refresh))
         button.title = NSLocalizedString("Refresh", comment: "Button label to refres a web page")
         return button
     }()
     @objc lazy var closeButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.cross), style: .plain, target: self, action: #selector(WebKitViewController.close))
+        let button = UIBarButtonItem(image: .gridicon(.cross), style: .plain, target: self, action: #selector(WebKitViewController.close))
         button.title = NSLocalizedString("Dismiss", comment: "Dismiss a view. Verb")
         return button
     }()
@@ -55,7 +75,7 @@ class WebKitViewController: UIViewController {
     @objc var customOptionsButton: UIBarButtonItem?
 
     @objc let url: URL?
-    @objc let authenticator: WebViewAuthenticator?
+    @objc let authenticator: RequestAuthenticator?
     @objc let navigationDelegate: WebNavigationDelegate?
     @objc var secureInteraction = false
     @objc var addsWPComReferrer = false
@@ -67,6 +87,7 @@ class WebKitViewController: UIViewController {
     private var reachabilityObserver: Any?
     private var tapLocation = CGPoint(x: 0.0, y: 0.0)
     private var widthConstraint: NSLayoutConstraint?
+    private var onClose: (() -> Void)?
 
     private struct WebViewErrors {
         static let frameLoadInterrupted = 102
@@ -84,6 +105,7 @@ class WebKitViewController: UIViewController {
         navigationDelegate = configuration.navigationDelegate
         linkBehavior = configuration.linkBehavior
         opensNewInSafari = configuration.opensNewInSafari
+        onClose = configuration.onClose
         super.init(nibName: nil, bundle: nil)
         hidesBottomBarWhenPushed = true
         startObservingWebView()
@@ -172,26 +194,14 @@ class WebKitViewController: UIViewController {
 
     @objc func loadWebViewRequest() {
         if ReachabilityUtils.alertIsShowing() {
-            self.dismiss(animated: false)
+            dismiss(animated: false)
         }
-
-        guard let authenticator = authenticator else {
-            if let url = url {
-                load(request: URLRequest(url: url))
-            }
+        guard let url = url else {
             return
         }
 
-        DispatchQueue.main.async { [weak self] in
-            guard let strongSelf = self else {
-                return
-            }
-
-            if let url = strongSelf.url {
-                authenticator.request(url: url, cookieJar: strongSelf.webView.configuration.websiteDataStore.httpCookieStore) { [weak self] (request) in
-                    self?.load(request: request)
-                }
-            }
+        authenticatedRequest(for: url, on: webView) { [weak self] (request) in
+            self?.load(request: request)
         }
     }
 
@@ -307,7 +317,7 @@ class WebKitViewController: UIViewController {
         guard let toolBar = navigationController?.toolbar else {
             return
         }
-        toolBar.barTintColor = UIColor(light: .white, dark: .appBar)
+        toolBar.barTintColor = UIColor(light: .white, dark: .appBarBackground)
         fixBarButtonsColorForBoldText(on: toolBar)
     }
 
@@ -372,7 +382,7 @@ class WebKitViewController: UIViewController {
     // MARK: User Actions
 
     @objc func close() {
-        dismiss(animated: true)
+        dismiss(animated: true, completion: onClose)
     }
 
     @objc func share() {
@@ -459,11 +469,6 @@ class WebKitViewController: UIViewController {
 
 extension WebKitViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let request = authenticator?.interceptRedirect(request: navigationAction.request) {
-            decisionHandler(.cancel)
-            load(request: request)
-            return
-        }
 
         if let delegate = navigationDelegate {
             let policy = delegate.shouldNavigate(request: navigationAction.request)

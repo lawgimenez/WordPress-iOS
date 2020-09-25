@@ -2,7 +2,7 @@
 
 extern NSString * const WPNewPostURLParamContentKey;
 extern NSString * const WPNewPostURLParamTagsKey;
-
+//TODO: Remove WPTabMe and WPTabNewPost when the new Me page and FAB are released
 typedef NS_ENUM(NSUInteger, WPTabType) {
     WPTabMySites,
     WPTabReader,
@@ -19,7 +19,7 @@ typedef NS_ENUM(NSUInteger, WPTabType) {
 @class NotificationsViewController;
 @class ReaderCoordinator;
 @class ReaderMenuViewController;
-@class CreateButtonCoordinator;
+@class ReaderTabViewModel;
 @class WPSplitViewController;
 @class QuickStartTourGuide;
 @protocol ScenePresenter;
@@ -35,11 +35,12 @@ typedef NS_ENUM(NSUInteger, WPTabType) {
 @property (nonatomic, strong, readonly) MeViewController *meViewController;
 // will be removed when the new IA implementation completes
 @property (nonatomic, strong, readonly) UINavigationController *meNavigationController;
+@property (nonatomic, strong, readonly) UINavigationController *readerNavigationController;
 @property (nonatomic, strong, readonly) QuickStartTourGuide *tourGuide;
 @property (nonatomic, strong, readonly) MySitesCoordinator *mySitesCoordinator;
 @property (nonatomic, strong, readonly) ReaderCoordinator *readerCoordinator;
 @property (nonatomic, strong) id<ScenePresenter> meScenePresenter;
-@property (nonatomic, strong, readonly) CreateButtonCoordinator *createButtonCoordinator;
+@property (nonatomic, strong, readonly) ReaderTabViewModel *readerTabViewModel;
 
 + (instancetype)sharedInstance;
 
@@ -75,5 +76,7 @@ typedef NS_ENUM(NSUInteger, WPTabType) {
 - (void)updateNotificationBadgeVisibility;
 // will be removed when the new IA implementation completes
 - (void)showTabForIndex:(NSInteger)tabIndex;
+
+- (Blog *)currentOrLastBlog;
 
 @end

@@ -5,12 +5,21 @@ class GutenbergSettings {
     enum Key {
         static let appWideEnabled = "kUserDefaultsGutenbergEditorEnabled"
         static func enabledOnce(for blog: Blog) -> String {
-            let url = (blog.url ?? "") as String
+            let url = urlStringFrom(blog)
             return "com.wordpress.gutenberg-autoenabled-" + url
         }
         static func showPhase2Dialog(for blog: Blog) -> String {
-            let url = (blog.url ?? "") as String
+            let url = urlStringFrom(blog)
             return "kShowGutenbergPhase2Dialog-" + url
+        }
+        static let starterPageTemplatesTooltipShown = "kGutenbergStarterPageTampletesTooltipShown"
+
+        private static func urlStringFrom(_ blog: Blog) -> String {
+            return (blog.url ?? "")
+            // New sites will add a slash at the end of URL.
+            // This is removed when the URL is refreshed from remote.
+            // Removing trailing '/' in case there is one for consistency.
+            .removingTrailingCharacterIfExists("/")
         }
     }
 
@@ -149,6 +158,16 @@ class GutenbergSettings {
         database.set(true, forKey: Key.enabledOnce(for: blog))
     }
 
+    /// True if it should show the tooltip for the starter page templates picker
+    var starterPageTemplatesTooltipShown: Bool {
+        get {
+            database.bool(forKey: Key.starterPageTemplatesTooltipShown)
+        }
+        set {
+            database.set(newValue, forKey: Key.starterPageTemplatesTooltipShown)
+        }
+    }
+
     // MARK: - Gutenberg Choice Logic
 
     /// Call this method to know if Gutenberg must be used for the specified post.
@@ -170,7 +189,8 @@ class GutenbergSettings {
     }
 
     func getDefaultEditor(for blog: Blog) -> MobileEditor {
-        return .aztec
+        database.set(true, forKey: Key.enabledOnce(for: blog))
+        return .gutenberg
     }
 }
 
@@ -184,5 +204,14 @@ class GutenbergSettingsBridge: NSObject {
     @objc(postSettingsToRemoteForBlog:)
     static func postSettingsToRemote(for blog: Blog) {
         GutenbergSettings().postSettingsToRemote(for: blog)
+    }
+}
+
+private extension String {
+    func removingTrailingCharacterIfExists(_ character: Character) -> String {
+        if self.last == character {
+            return String(dropLast())
+        }
+        return self
     }
 }

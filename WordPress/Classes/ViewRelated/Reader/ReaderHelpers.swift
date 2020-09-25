@@ -122,7 +122,7 @@ import WordPressShared
     /// - Parameters:
     ///     - topic: A ReaderAbstractTopic
     ///
-    /// - Returns: True if the topic is for Discover
+    /// - Returns: True if the topic is for Saved For Later
     ///
     @objc open class func topicIsSavedForLater(_ topic: ReaderAbstractTopic) -> Bool {
         //TODO. Update this logic with the right one. I am not sure how this is going to be modeeled now.
@@ -132,15 +132,24 @@ import WordPressShared
 
     // MARK: Analytics Helpers
 
-    @objc open class func trackLoadedTopic(_ topic: ReaderAbstractTopic, withProperties properties: [AnyHashable: Any]) {
+    class func trackLoadedTopic(_ topic: ReaderAbstractTopic, withProperties properties: [AnyHashable: Any]) {
         var stat: WPAnalyticsStat?
 
         if topicIsFreshlyPressed(topic) {
             stat = .readerFreshlyPressedLoaded
 
+        } else if topicIsFollowing(topic) {
+            WPAnalytics.track(.readerFollowingShown, properties: properties)
+
+        } else if topicIsLiked(topic) {
+            WPAnalytics.track(.readerLikedShown, properties: properties)
+
+        } else if isTopicSite(topic) {
+            WPAnalytics.track(.readerBlogPreviewed, properties: properties)
+
         } else if isTopicDefault(topic) && topicIsDiscover(topic) {
             // Tracks Discover only if it was one of the default menu items.
-            stat = .readerDiscoverViewed
+            WPAnalytics.track(.readerDiscoverShown, properties: properties)
 
         } else if isTopicList(topic) {
             stat = .readerListLoaded
@@ -226,10 +235,111 @@ import WordPressShared
         return false
     }
 
+    // convenience method that returns the topic type
+    class func topicType(_ topic: ReaderAbstractTopic?) -> ReaderTopicType {
+        guard let topic = topic else {
+            return .noTopic
+        }
+        if topicIsDiscover(topic) {
+            return .discover
+        }
+        if topicIsFollowing(topic) {
+            return .following
+        }
+        if topicIsLiked(topic) {
+            return .likes
+        }
+        if isTopicList(topic) {
+            return .list
+        }
+        if isTopicSearchTopic(topic) {
+            return .search
+        }
+        if isTopicSite(topic) {
+            return .site
+        }
+        if isTopicTag(topic) {
+            return .tag
+        }
+        if topic is ReaderTeamTopic {
+            return .team
+        }
+        return .noTopic
+    }
 
     // MARK: Logged in helper
 
     @objc open class func isLoggedIn() -> Bool {
         return AccountHelper.isDotcomAvailable()
     }
+}
+
+/// Reader tab items
+extension ReaderHelpers {
+
+    static let defaultSavedItemPosition = 3
+
+    /// Sorts the default tabs according to the order [Following, Discover, Likes], and adds the Saved tab
+    class func rearrange(items: [ReaderTabItem]) -> [ReaderTabItem] {
+
+        guard !items.isEmpty else {
+                   return items
+               }
+
+        var mutableItems = items
+        mutableItems.sort {
+            guard let leftTopic = $0.content.topic, let rightTopic = $1.content.topic else {
+                return true
+            }
+            // first item: Following
+            if topicIsFollowing(leftTopic) {
+                return true
+            }
+            if topicIsFollowing(rightTopic) {
+                return false
+            }
+            // second item: Discover
+            if topicIsDiscover(leftTopic) {
+                return true
+            }
+            if topicIsDiscover(rightTopic) {
+                return false
+            }
+            // third item: Likes
+            if topicIsLiked(leftTopic) {
+                return true
+            }
+            if topicIsLiked(rightTopic) {
+                return false
+            // any other items: sort them alphabetically, grouped by topic type
+            }
+            if leftTopic.type == rightTopic.type {
+                return leftTopic.title < rightTopic.title
+            }
+            return true
+        }
+
+        // fourth item: Saved. It's manually inserted after the sorting
+        let savedPosition = min(mutableItems.count, defaultSavedItemPosition)
+        mutableItems.insert(ReaderTabItem(ReaderContent(topic: nil, contentType: .saved)), at: savedPosition)
+        // in case of log in with a self hosted site, prepend a 'dummy' Following tab
+        if !isLoggedIn() {
+            mutableItems.insert(ReaderTabItem(ReaderContent(topic: nil, contentType: .selfHostedFollowing)), at: 0)
+        }
+        return mutableItems
+    }
+}
+
+
+/// Typed topic type
+enum ReaderTopicType {
+    case discover
+    case following
+    case likes
+    case list
+    case search
+    case site
+    case tag
+    case team
+    case noTopic
 }

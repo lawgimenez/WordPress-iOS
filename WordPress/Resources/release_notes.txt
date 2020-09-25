@@ -1,5 +1,11 @@
-- There are two new blocks available! Welcome, Button and Group blocks.
-- A few other blocks have improvements: You can change image sizes in image blocks and use upload options in Gallery blocks. We also took care of a text-wrapping issue in Shortcode blocks that would cut off part of your content.
-- We also made some enhancements to the general block experience. You’ll see a new toolbar floating above the block you’re editing to make navigating blocks, especially complex ones, easier. There’s also scroll support in the block picker and in block settings.
-- Finally, we fixed a few bugs. Adding emoji to a post title no longer adds strong HTML elements to the post title, and the alignment of paragraph blocks is now respected when you split the paragraph or read the post’s HTML content.
-- We also adjusted the weekday symbols in the calendar depending on your regional settings, and added Quick Action buttons to the Site Details to take you straight to the most frequently used parts of a site.
+Your Reader experience can now be tailored just for you — with a new Discover feed reflecting your chosen interests. 
+
+Block settings in the Block Editor now immediately reflect any changes made in the menu sliders.
+
+Improved signup and login experience — both with directing the user on the steps and connecting a self-hosted site. 
+
+There is also a brand new way to login with the iCloud Keychain feature — a password manager that remembers your WP.com accounts and passwords. 
+
+Don’t miss anything! You can now follow conversations on P2 sites. 
+
+We have also reduced memory usage when marking up an image, so media editing won’t cause a crash.   

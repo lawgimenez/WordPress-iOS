@@ -14,8 +14,9 @@ class WebViewControllerConfiguration: NSObject {
     /// The behavior to use for allowing links to be loaded by the web view based
     var linkBehavior = LinkBehavior.all
     @objc var customTitle: String?
-    @objc var authenticator: WebViewAuthenticator?
+    @objc var authenticator: RequestAuthenticator?
     @objc weak var navigationDelegate: WebNavigationDelegate?
+    var onClose: (() -> Void)?
 
     @objc init(url: URL?) {
         self.url = url
@@ -23,11 +24,11 @@ class WebViewControllerConfiguration: NSObject {
     }
 
     @objc func authenticate(blog: Blog) {
-        self.authenticator = WebViewAuthenticator(blog: blog)
+        self.authenticator = RequestAuthenticator(blog: blog)
     }
 
     @objc func authenticate(account: WPAccount) {
-        self.authenticator = WebViewAuthenticator(account: account)
+        self.authenticator = RequestAuthenticator(account: account)
     }
 
     @objc func authenticateWithDefaultAccount() {

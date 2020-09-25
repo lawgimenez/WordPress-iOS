@@ -29,7 +29,7 @@ class GutenbergMediaInserterHelper: NSObject {
 
     func insertFromSiteMediaLibrary(media: [Media], callback: @escaping MediaPickerDidPickMediaCallback) {
         let formattedMedia = media.map { item in
-            return MediaInfo(id: item.mediaID?.int32Value, url: item.remoteURL, type: item.mediaTypeString)
+            return MediaInfo(id: item.mediaID?.int32Value, url: item.remoteURL, type: item.mediaTypeString, caption: item.caption)
         }
         callback(formattedMedia)
     }
@@ -69,6 +69,7 @@ class GutenbergMediaInserterHelper: NSObject {
         options.deliveryMode = .fastFormat
         options.version = .current
         options.resizeMode = .fast
+        options.isNetworkAccessAllowed = true
         let mediaUploadID = media.gutenbergUploadID
         // Getting a quick thumbnail of the asset to display while the image is being exported and uploaded.
         PHImageManager.default().requestImage(for: asset, targetSize: asset.pixelSize(), contentMode: .default, options: options) { (image, info) in
@@ -97,8 +98,8 @@ class GutenbergMediaInserterHelper: NSObject {
         callback([MediaInfo(id: mediaUploadID, url: url.absoluteString, type: media.mediaTypeString)])
     }
 
-    func insertFromImage(image: UIImage, callback: @escaping MediaPickerDidPickMediaCallback) {
-        guard let media = insert(exportableAsset: image, source: .mediaEditor) else {
+    func insertFromImage(image: UIImage, callback: @escaping MediaPickerDidPickMediaCallback, source: MediaSource = .deviceLibrary) {
+        guard let media = insert(exportableAsset: image, source: source) else {
             callback([])
             return
         }
@@ -231,15 +232,15 @@ class GutenbergMediaInserterHelper: NSObject {
     }
 
     private func mediaObserver(media: Media, state: MediaCoordinator.MediaState) {
-        // Make sure gutenberg is loaded before seding events to it.
-        guard gutenberg.isLoaded else {
-            return
-        }
         let mediaUploadID = media.gutenbergUploadID
         switch state {
         case .processing:
             gutenberg.mediaUploadUpdate(id: mediaUploadID, state: .uploading, progress: 0, url: nil, serverID: nil)
         case .thumbnailReady(let url):
+            guard ReachabilityUtils.isInternetReachable() else {
+                gutenberg.mediaUploadUpdate(id: mediaUploadID, state: .failed, progress: 0, url: url, serverID: nil)
+                return
+            }
             gutenberg.mediaUploadUpdate(id: mediaUploadID, state: .uploading, progress: 0.20, url: url, serverID: nil)
             break
         case .uploading:

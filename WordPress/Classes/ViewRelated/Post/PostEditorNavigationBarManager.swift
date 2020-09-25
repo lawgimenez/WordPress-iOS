@@ -34,7 +34,7 @@ class PostEditorNavigationBarManager {
     }()
 
     private lazy var moreButton: UIButton = {
-        let image = Gridicon.iconOfType(.ellipsis)
+        let image = UIImage.gridicon(.ellipsis)
         let button = UIButton(type: .system)
         button.setImage(image, for: .normal)
         button.frame = CGRect(origin: .zero, size: image.size)
@@ -206,6 +206,7 @@ class PostEditorNavigationBarManager {
 
     func reloadPublishButton() {
         publishButton.setTitle(delegate?.publishButtonText ?? "", for: .normal)
+        publishButton.sizeToFit()
         publishButton.isEnabled = delegate?.isPublishButtonEnabled ?? true
     }
 
@@ -230,10 +231,16 @@ extension PostEditorNavigationBarManager {
 
     private enum Fonts {
         static let semiBold = WPFontManager.systemSemiBoldFont(ofSize: 16)
-        static let blogPicker = Fonts.semiBold
+        static var blogPicker: UIFont {
+            if FeatureFlag.newNavBarAppearance.enabled {
+                return WPStyleGuide.navigationBarStandardFont
+            } else {
+                return semiBold
+            }
+        }
     }
 
     private enum Assets {
-        static let closeButtonModalImage    = Gridicon.iconOfType(.cross)
+        static let closeButtonModalImage    = UIImage.gridicon(.cross)
     }
 }

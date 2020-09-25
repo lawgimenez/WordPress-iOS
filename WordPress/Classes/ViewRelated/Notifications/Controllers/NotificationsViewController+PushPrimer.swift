@@ -109,6 +109,7 @@ extension NotificationsViewController {
 extension UserDefaults {
     private enum Keys: String {
         case notificationPrimerInlineWasAcknowledged = "notificationPrimerInlineWasAcknowledged"
+        case secondNotificationsAlertCount = "secondNotificationsAlertCount"
     }
 
     var notificationPrimerInlineWasAcknowledged: Bool {
@@ -118,5 +119,18 @@ extension UserDefaults {
         set {
             set(newValue, forKey: Keys.notificationPrimerInlineWasAcknowledged.rawValue)
         }
+    }
+
+    var secondNotificationsAlertCount: Int {
+        get {
+            integer(forKey: Keys.secondNotificationsAlertCount.rawValue)
+        }
+        set {
+            set(newValue, forKey: Keys.secondNotificationsAlertCount.rawValue)
+        }
+    }
+
+    @objc var welcomeNotificationSeenKey: String {
+        return "welcomeNotificationSeen"
     }
 }

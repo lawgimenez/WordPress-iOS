@@ -2,7 +2,7 @@ import UIKit
 import Gridicons
 import WordPressShared
 import WordPressUI
-
+// TODO: - READERNAV - Remove this file once the new reader is released and stable
 final class ReaderSavedPostsViewController: UITableViewController {
     private enum Strings {
         static let title = NSLocalizedString("Saved Posts", comment: "Title for list of posts saved for later")
@@ -105,7 +105,7 @@ final class ReaderSavedPostsViewController: UITableViewController {
     @objc public func configurePostCardCell(_ cell: UITableViewCell, post: ReaderPost) {
         if postCellActions == nil {
             postCellActions = ReaderSavedPostCellActions(context: managedObjectContext(), origin: self, topic: post.topic, visibleConfirmation: false)
-            postCellActions?.delegate = self
+            postCellActions?.savedPostsDelegate = self
         }
 
         cellConfiguration.configurePostCardCell(cell,
@@ -259,20 +259,7 @@ extension ReaderSavedPostsViewController: WPTableViewHandlerDelegate {
             }
         }
 
-        var controller: ReaderDetailViewController
-        if post.sourceAttributionStyle() == .post &&
-            post.sourceAttribution.postID != nil &&
-            post.sourceAttribution.blogID != nil {
-
-            controller = ReaderDetailViewController.controllerWithPostID(post.sourceAttribution.postID!, siteID: post.sourceAttribution.blogID!)
-
-        } else if post.isCross() {
-            controller = ReaderDetailViewController.controllerWithPostID(post.crossPostMeta.postID, siteID: post.crossPostMeta.siteID)
-
-        } else {
-            controller = ReaderDetailViewController.controllerWithPost(post)
-
-        }
+        let controller = ReaderDetailViewController.controllerWithPost(post)
 
         trackSavedPostNavigation()
 
@@ -319,7 +306,7 @@ private extension ReaderSavedPostsViewController {
         let styledText = noResultsViewController.applyMessageStyleTo(attributedString: messageText)
         messageText = NSMutableAttributedString(attributedString: styledText)
 
-        let icon = Gridicon.iconOfType(.bookmarkOutline, withSize: CGSize(width: 18, height: 18))
+        let icon = UIImage.gridicon(.bookmarkOutline, size: CGSize(width: 18, height: 18))
         messageText.replace("[bookmark-outline]", with: icon)
 
         noResultsViewController.configure(title: NoResultsText.noResultsTitle, attributedSubtitle: messageText)

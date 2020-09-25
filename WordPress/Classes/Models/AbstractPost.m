@@ -420,7 +420,7 @@
 
 - (BOOL)shouldPublishImmediately
 {
-    return [self originalIsDraft] && ![self hasFuturePublishDate];
+    return [self originalIsDraft] && [self dateCreatedIsNilOrEqualToDateModified];
 }
 
 - (NSString *)authorNameForDisplay
@@ -475,9 +475,9 @@
     return [self.blog supports:BlogFeatureStats] && [self hasRemote];
 }
 
-- (BOOL)isPrivate
+- (BOOL)isPrivateAtWPCom
 {
-    return self.blog.isPrivate;
+    return self.blog.isPrivateAtWPCom;
 }
 
 - (BOOL)isMultiAuthorBlog
@@ -569,6 +569,11 @@
     if (!([self.wp_slug length] == 0 && [original.wp_slug length] == 0)
         && (![self.wp_slug isEqual:original.wp_slug]))
     {
+        return YES;
+    }
+
+    if ( ((self.featuredImage != nil) && ![self.featuredImage.objectID isEqual: original.featuredImage.objectID]) ||
+        (self.featuredImage == nil && self.original.featuredImage != nil) ) {
         return YES;
     }
 

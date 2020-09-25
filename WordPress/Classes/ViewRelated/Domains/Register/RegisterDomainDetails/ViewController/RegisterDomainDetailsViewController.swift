@@ -2,7 +2,7 @@ import UIKit
 import WordPressAuthenticator
 import WordPressEditor
 
-class RegisterDomainDetailsViewController: NUXTableViewController {
+class RegisterDomainDetailsViewController: UITableViewController {
 
     typealias Localized = RegisterDomainDetails.Localized
     typealias SectionIndex = RegisterDomainDetailsViewModel.SectionIndex
@@ -207,11 +207,15 @@ extension RegisterDomainDetailsViewController: InlineEditableNameValueCellDelega
         viewModel.updateValue(text, at: indexPath)
 
         if sectionType == .address,
-            viewModel.addressSectionIndexHelper.addressField(for: indexPath.row) == .addressLine,
+            viewModel.addressSectionIndexHelper.addressField(for: indexPath.row) == .addressLine1,
             indexPath.row == viewModel.addressSectionIndexHelper.extraAddressLineCount,
             text.isEmpty == false {
                 viewModel.enableAddAddressRow()
         }
+    }
+
+    func inlineEditableNameValueCell(_ cell: InlineEditableNameValueCell, valueTextFieldEditingDidEnd text: String) {
+        inlineEditableNameValueCell(cell, valueTextFieldDidChange: text)
     }
 
     func inlineEditableNameValueCell(_ cell: InlineEditableNameValueCell, valueTextFieldShouldReturn textField: UITextField) -> Bool {

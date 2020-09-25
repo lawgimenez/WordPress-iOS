@@ -7,6 +7,7 @@
 @class ReaderCrossPostMeta;
 @class SourcePostAttribution;
 @class Comment;
+@class RemoteReaderPost;
 
 extern NSString * const ReaderPostStoredCommentIDKey;
 extern NSString * const ReaderPostStoredCommentTextKey;
@@ -26,6 +27,7 @@ extern NSString * const ReaderPostStoredCommentTextKey;
 @property (nonatomic, strong) NSNumber *feedID;
 @property (nonatomic, strong) NSNumber *feedItemID;
 @property (nonatomic, strong) NSString *globalID;
+@property (nonatomic) BOOL isBlogAtomic;
 @property (nonatomic) BOOL isBlogPrivate;
 @property (nonatomic) BOOL isFollowing;
 @property (nonatomic) BOOL isLiked;
@@ -64,6 +66,8 @@ extern NSString * const ReaderPostStoredCommentTextKey;
 
 // When true indicates a post should not be deleted/cleaned-up as its currently being used.
 @property (nonatomic) BOOL inUse;
+
++ (instancetype)createOrReplaceFromRemotePost:(RemoteReaderPost *)remotePost forTopic:(ReaderAbstractTopic *)topic context:(NSManagedObjectContext *) managedObjectContext;
 
 - (BOOL)isCrossPost;
 - (BOOL)isPrivate;

@@ -32,10 +32,6 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
     ///
     @IBOutlet var inlinePromptView: AppFeedbackPromptView!
 
-    /// Ensures the segmented control is below the feedback prompt
-    ///
-    @IBOutlet var inlinePromptSpaceConstraint: NSLayoutConstraint!
-
     /// TableView Handler: Our commander in chief!
     ///
     fileprivate var tableViewHandler: WPTableViewHandler!
@@ -81,6 +77,11 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
     ///
     internal var jetpackLoginViewController: JetpackLoginViewController? = nil
 
+    /// Timestamp of the most recent note before updates
+    /// Used to count notifications to show the second notifications prompt
+    ///
+    private var timestampBeforeUpdatesForSecondAlert: String?
+
     /// Activity Indicator to be shown when refreshing a Jetpack site status.
     ///
     let activityIndicator: UIActivityIndicatorView = {
@@ -91,7 +92,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
 
     /// Notification Settings button
     lazy var notificationSettingsButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: Gridicon.iconOfType(.cog), style: .plain, target: self, action: #selector(showNotificationSettings))
+        let button = UIBarButtonItem(image: .gridicon(.cog), style: .plain, target: self, action: #selector(showNotificationSettings))
         button.accessibilityLabel = NSLocalizedString("Notification Settings", comment: "Link to Notification Settings section")
         return button
     }()
@@ -113,12 +114,13 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
         setupNavigationBar()
         setupTableView()
         setupTableFooterView()
-        layoutHeaderIfNeeded()
-        setupConstraints()
         setupTableHandler()
         setupRefreshControl()
         setupNoResultsView()
         setupFilterBar()
+
+        tableView.tableHeaderView = tableHeaderView
+        setupConstraints()
 
         reloadTableViewPreservingSelection()
     }
@@ -170,6 +172,21 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
         markSelectedNotificationAsRead()
 
         registerUserActivity()
+
+        markWelcomeNotificationAsSeenIfNeeded()
+
+        if userDefaults.notificationsTabAccessCount < Constants.inlineTabAccessCount {
+            userDefaults.notificationsTabAccessCount += 1
+        }
+
+        if shouldShowPrimeForPush {
+            setupNotificationPrompt()
+        } else if AppRatingUtility.shared.shouldPromptForAppReview(section: InlinePrompt.section) {
+            setupAppRatings()
+            self.showInlinePrompt()
+        }
+        showNotificationPrimerAlertIfNeeded()
+        showSecondNotificationsAlertIfNeeded()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -184,25 +201,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        layoutHeaderIfNeeded()
-    }
-
-    private func layoutHeaderIfNeeded() {
-        precondition(tableHeaderView != nil)
-        // Fix: Update the Frame manually: Autolayout doesn't really help us, when it comes to Table Headers
-        let requiredSize = tableHeaderView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-        var headerFrame = tableHeaderView.frame
-        if headerFrame.height != requiredSize.height {
-            headerFrame.size.height = requiredSize.height
-            tableHeaderView.frame = headerFrame
-            adjustNoResultsViewSize()
-
-            tableHeaderView.layoutIfNeeded()
-
-            // We reassign the tableHeaderView to force the UI to refresh. Yes, really.
-            tableView.tableHeaderView = tableHeaderView
-            tableView.setNeedsLayout()
-        }
+        tableView.layoutHeaderView()
     }
 
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
@@ -224,6 +223,8 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
                 selectFirstNotificationIfAppropriate()
             }
         }
+
+        tableView.tableHeaderView = tableHeaderView
     }
 
     // MARK: - State Restoration
@@ -471,15 +472,14 @@ private extension NotificationsViewController {
     }
 
     func setupConstraints() {
-        precondition(inlinePromptSpaceConstraint != nil)
-
         // Inline prompt is initially hidden!
-        tableHeaderView.translatesAutoresizingMaskIntoConstraints = false
         inlinePromptView.translatesAutoresizingMaskIntoConstraints = false
 
-        tableHeaderView.centerXAnchor.constraint(equalTo: tableView.centerXAnchor).isActive = true
-        tableHeaderView.topAnchor.constraint(equalTo: tableView.topAnchor).isActive = true
-        tableHeaderView.widthAnchor.constraint(equalTo: tableView.widthAnchor).isActive = true
+        NSLayoutConstraint.activate([
+            tableHeaderView.topAnchor.constraint(equalTo: tableView.topAnchor),
+            tableHeaderView.safeLeadingAnchor.constraint(equalTo: tableView.safeLeadingAnchor),
+            tableHeaderView.safeTrailingAnchor.constraint(equalTo: tableView.safeTrailingAnchor)
+        ])
     }
 
     func setupTableView() {
@@ -512,17 +512,7 @@ private extension NotificationsViewController {
 
         inlinePromptView.alpha = WPAlphaZero
 
-        // this allows the selector to move to the top
-        inlinePromptSpaceConstraint.isActive = false
-
-        if shouldShowPrimeForPush {
-            setupNotificationPrompt()
-        } else if AppRatingUtility.shared.shouldPromptForAppReview(section: InlinePrompt.section) {
-            setupAppRatings()
-            showInlinePrompt()
-        }
-
-        layoutHeaderIfNeeded()
+        inlinePromptView.isHidden = true
     }
 
     func setupRefreshControl() {
@@ -676,6 +666,7 @@ extension NotificationsViewController {
         if let postID = note.metaPostID, let siteID = note.metaSiteID, note.kind == .matcher || note.kind == .newPost {
             let readerViewController = ReaderDetailViewController.controllerWithPostID(postID, siteID: siteID)
             showDetailViewController(readerViewController, sender: nil)
+
             return
         }
 
@@ -826,6 +817,14 @@ private extension NotificationsViewController {
         }
 
         NotificationSyncMediator()?.markAsUnread(note)
+    }
+
+    func markWelcomeNotificationAsSeenIfNeeded() {
+        let welcomeNotificationSeenKey = userDefaults.welcomeNotificationSeenKey
+        if !userDefaults.bool(forKey: welcomeNotificationSeenKey) {
+            userDefaults.set(true, forKey: welcomeNotificationSeenKey)
+            resetApplicationBadge()
+        }
     }
 }
 
@@ -1096,6 +1095,22 @@ extension NotificationsViewController: WPTableViewHandlerDelegate {
         return Notification.classNameWithoutNamespaces()
     }
 
+    private var shouldCountNotificationsForSecondAlert: Bool {
+        userDefaults.notificationPrimerInlineWasAcknowledged &&
+            userDefaults.secondNotificationsAlertCount != Constants.secondNotificationsAlertDisabled
+    }
+
+    func tableViewWillChangeContent(_ tableView: UITableView) {
+        guard shouldCountNotificationsForSecondAlert,
+            let notification = tableViewHandler.resultsController.fetchedObjects?.first as? Notification,
+            let timestamp = notification.timestamp else {
+                timestampBeforeUpdatesForSecondAlert = nil
+                return
+        }
+
+        timestampBeforeUpdatesForSecondAlert = timestamp
+    }
+
     func tableViewDidChangeContent(_ tableView: UITableView) {
         // Due to an UIKit bug, we need to draw our own separators (Issue #2845). Let's update the separator status
         // after a DB OP. This loop has been measured in the order of milliseconds (iPad Mini)
@@ -1119,6 +1134,32 @@ extension NotificationsViewController: WPTableViewHandlerDelegate {
         } else {
             selectFirstNotificationIfAppropriate()
         }
+        // count new notifications for second alert
+        guard shouldCountNotificationsForSecondAlert else {
+            return
+        }
+
+        userDefaults.secondNotificationsAlertCount += newNotificationsForSecondAlert
+
+        if isViewOnScreen() {
+            showSecondNotificationsAlertIfNeeded()
+        }
+    }
+
+    // counts the new notifications for the second alert
+    private var newNotificationsForSecondAlert: Int {
+
+        guard let previousTimestamp = timestampBeforeUpdatesForSecondAlert,
+            let notifications = tableViewHandler.resultsController.fetchedObjects as? [Notification] else {
+
+            return 0
+        }
+        for notification in notifications.enumerated() {
+            if let timestamp = notification.element.timestamp, timestamp <= previousTimestamp {
+                return notification.offset
+            }
+        }
+        return 0
     }
 
     private static func accessibilityHint(for note: Notification) -> String? {
@@ -1293,30 +1334,30 @@ extension NotificationsViewController: NoResultsViewControllerDelegate {
 //
 internal extension NotificationsViewController {
     func showInlinePrompt() {
-        guard inlinePromptView.alpha != WPAlphaFull else {
+        guard inlinePromptView.alpha != WPAlphaFull,
+            userDefaults.notificationPrimerAlertWasDisplayed,
+            userDefaults.notificationsTabAccessCount >= Constants.inlineTabAccessCount else {
             return
         }
 
-        // allows the inline prompt to push the selector down
-        inlinePromptSpaceConstraint.isActive = true
+        UIView.animate(withDuration: WPAnimationDurationDefault, delay: 0, options: .curveEaseIn, animations: {
+            self.inlinePromptView.isHidden = false
+        })
 
-        // Layout immediately the TableHeaderView. Otherwise we'll see a seriously uncool Buttons Resizing animation.
-        tableHeaderView.layoutIfNeeded()
-
-        UIView.animate(withDuration: WPAnimationDurationDefault, delay: InlinePrompt.animationDelay, options: .curveEaseIn, animations: {
+        UIView.animate(withDuration: WPAnimationDurationDefault * 0.5, delay: WPAnimationDurationDefault * 0.75, options: .curveEaseIn, animations: {
             self.inlinePromptView.alpha = WPAlphaFull
-            self.layoutHeaderIfNeeded()
         })
 
         WPAnalytics.track(.appReviewsSawPrompt)
     }
 
     func hideInlinePrompt(delay: TimeInterval) {
-        inlinePromptSpaceConstraint.isActive = false
-
-        UIView.animate(withDuration: WPAnimationDurationDefault, delay: delay, animations: {
+        UIView.animate(withDuration: WPAnimationDurationDefault * 0.75, delay: delay, animations: {
             self.inlinePromptView.alpha = WPAlphaZero
-            self.layoutHeaderIfNeeded()
+        })
+
+        UIView.animate(withDuration: WPAnimationDurationDefault, delay: delay + WPAnimationDurationDefault * 0.5, animations: {
+            self.inlinePromptView.isHidden = true
         })
     }
 }
@@ -1637,6 +1678,82 @@ private extension NotificationsViewController {
 
     enum InlinePrompt {
         static let section = "notifications"
-        static let animationDelay = TimeInterval(0.5)
+    }
+}
+
+// MARK: - Push Notifications Permission Alert
+extension NotificationsViewController: UIViewControllerTransitioningDelegate {
+
+    func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -> UIPresentationController? {
+        guard let fancyAlertController = presented as? FancyAlertViewController else {
+            return nil
+        }
+        return FancyAlertPresentationController(presentedViewController: fancyAlertController, presenting: presenting)
+    }
+
+    private func showNotificationPrimerAlertIfNeeded() {
+
+        guard !userDefaults.notificationPrimerAlertWasDisplayed else {
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.displayAlertDelay) {
+                self.showNotificationPrimerAlert()
+        }
+    }
+
+    private func notificationAlertApproveAction(_ controller: FancyAlertViewController) {
+        InteractiveNotificationsManager.shared.requestAuthorization {
+            DispatchQueue.main.async {
+                controller.dismiss(animated: true)
+            }
+        }
+    }
+
+    private func showNotificationPrimerAlert() {
+        let alertController = FancyAlertViewController.makeNotificationPrimerAlertController(approveAction: notificationAlertApproveAction(_:))
+        showNotificationAlert(alertController)
+    }
+
+    private func showSecondNotificationAlert() {
+        let alertController = FancyAlertViewController.makeNotificationSecondAlertController(approveAction: notificationAlertApproveAction(_:))
+        showNotificationAlert(alertController)
+    }
+
+    private func showNotificationAlert(_ alertController: FancyAlertViewController) {
+        let mainContext = ContextManager.shared.mainContext
+        let accountService = AccountService(managedObjectContext: mainContext)
+
+        guard accountService.defaultWordPressComAccount() != nil else {
+            return
+        }
+        PushNotificationsManager.shared.loadAuthorizationStatus { [weak self] (enabled) in
+            guard enabled == .notDetermined else {
+                return
+            }
+
+            UserDefaults.standard.notificationPrimerAlertWasDisplayed = true
+
+            let alert = alertController
+            alert.modalPresentationStyle = .custom
+            alert.transitioningDelegate = self
+            self?.tabBarController?.present(alert, animated: true)
+        }
+    }
+
+    private func showSecondNotificationsAlertIfNeeded() {
+        guard userDefaults.secondNotificationsAlertCount >= Constants.secondNotificationsAlertThreshold else {
+            return
+        }
+        showSecondNotificationAlert()
+        userDefaults.secondNotificationsAlertCount = Constants.secondNotificationsAlertDisabled
+    }
+
+    private enum Constants {
+        static let inlineTabAccessCount = 6
+        static let displayAlertDelay = 0.2
+        // number of notifications after which the second alert will show up
+        static let secondNotificationsAlertThreshold = 10
+        static let secondNotificationsAlertDisabled = -1
     }
 }

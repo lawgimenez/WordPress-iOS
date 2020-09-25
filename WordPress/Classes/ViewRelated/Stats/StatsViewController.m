@@ -38,7 +38,7 @@ static NSString *const StatsBlogObjectURLRestorationKey = @"StatsBlogObjectURL";
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = [WPStyleGuide itsEverywhereGrey];
+    self.view.backgroundColor = [UIColor groupTableViewBackgroundColor];
     self.navigationItem.title = NSLocalizedString(@"Stats", @"Stats window title");
     
     UINavigationController *statsNavVC = [[UIStoryboard storyboardWithName:@"SiteStatsDashboard" bundle:nil] instantiateInitialViewController];
@@ -189,6 +189,7 @@ static NSString *const StatsBlogObjectURLRestorationKey = @"StatsBlogObjectURL";
                                            @"Error message shown when trying to view Stats and there is no internet connection.");
 
     self.noResultsViewController = [NoResultsViewController controllerWithTitle:title
+                                                                attributedTitle:nil
                                                                     buttonTitle:nil
                                                                        subtitle:subtitle
                                                              attributedSubtitle:nil

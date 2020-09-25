@@ -11,6 +11,7 @@ final class ReaderShowMenuAction {
         let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
         alertController.addCancelActionWithTitle(ReaderPostMenuButtonTitles.cancel, handler: nil)
 
+
         // Block button
         if shouldShowBlockSiteMenuItem(readerTopic: readerTopic) {
             alertController.addActionWithTitle(ReaderPostMenuButtonTitles.blockSite,
@@ -18,6 +19,17 @@ final class ReaderShowMenuAction {
                                                handler: { (action: UIAlertAction) in
                                                 if let post: ReaderPost = ReaderActionHelpers.existingObject(for: post.objectID, in: context) {
                                                     ReaderBlockSiteAction(asBlocked: true).execute(with: post, context: context, completion: {})
+                                                }
+            })
+        }
+
+        // Report button
+        if shouldShowReportPostMenuItem(readerTopic: readerTopic) {
+            alertController.addActionWithTitle(ReaderPostMenuButtonTitles.reportPost,
+                                               style: .default,
+                                               handler: { (action: UIAlertAction) in
+                                                if let post: ReaderPost = ReaderActionHelpers.existingObject(for: post.objectID, in: context) {
+                                                    ReaderReportPostAction().execute(with: post, context: context, origin: vc)
                                                 }
             })
         }
@@ -42,10 +54,22 @@ final class ReaderShowMenuAction {
                                                style: .default,
                                                handler: { (action: UIAlertAction) in
                                                 if let post: ReaderPost = ReaderActionHelpers.existingObject(for: post.objectID, in: context) {
-                                                    ReaderFollowAction().execute(with: post, context: context)
+                                                    ReaderFollowAction().execute(with: post, context: context) {
+                                                        guard let vc = vc as? ReaderStreamViewController else {
+                                                            return
+                                                        }
+                                                        vc.updateStreamHeaderIfNeeded()
+                                                    }
                                                 }
             })
         }
+
+        // Visit
+        alertController.addActionWithTitle(ReaderPostMenuButtonTitles.visit,
+                                           style: .default,
+                                           handler: { (action: UIAlertAction) in
+                                            ReaderVisitSiteAction().execute(with: post, context: context, origin: vc)
+        })
 
         // Share
         alertController.addActionWithTitle(ReaderPostMenuButtonTitles.share,
@@ -66,6 +90,8 @@ final class ReaderShowMenuAction {
         } else {
             vc.present(alertController, animated: true)
         }
+
+        WPAnalytics.track(.postCardMoreTapped)
     }
 
     fileprivate func shouldShowBlockSiteMenuItem(readerTopic: ReaderAbstractTopic?) -> Bool {
@@ -73,8 +99,13 @@ final class ReaderShowMenuAction {
             return false
         }
         if isLoggedIn {
-            return ReaderHelpers.isTopicTag(topic) || ReaderHelpers.topicIsFreshlyPressed(topic)
+            return ReaderHelpers.isTopicTag(topic) || (ReaderHelpers.topicIsDiscover(topic) && FeatureFlag.readerImprovementsPhase2.enabled)
+                || ReaderHelpers.topicIsFreshlyPressed(topic)
         }
         return false
+    }
+
+    fileprivate func shouldShowReportPostMenuItem(readerTopic: ReaderAbstractTopic?) -> Bool {
+        return shouldShowBlockSiteMenuItem(readerTopic: readerTopic)
     }
 }
