@@ -93,6 +93,7 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
         AccountService(managedObjectContext: mainContext).restoreDisassociatedAccountIfNecessary()
 
         customizeAppearance()
+        configureAnalytics()
 
         let solver = WPAuthTokenIssueSolver()
         let isFixingAuthTokenIssue = solver.fixAuthTokenIssueAndDo { [weak self] in
@@ -235,7 +236,6 @@ class WordPressAppDelegate: UIResponder, UIApplicationDelegate {
 
         configureAppCenterSDK()
         configureAppRatingUtility()
-        configureAnalytics()
 
         printDebugLaunchInfoWithLaunchOptions(launchOptions)
         toggleExtraDebuggingIfNeeded()
@@ -800,6 +800,7 @@ extension WordPressAppDelegate {
 
             NotificationSupportService.insertServiceExtensionToken(authToken)
             NotificationSupportService.insertServiceExtensionUsername(account.username)
+            NotificationSupportService.insertServiceExtensionUserID(account.userID.stringValue)
         }
     }
 
@@ -809,6 +810,7 @@ extension WordPressAppDelegate {
 
         NotificationSupportService.deleteServiceExtensionToken()
         NotificationSupportService.deleteServiceExtensionUsername()
+        NotificationSupportService.deleteServiceExtensionUserID()
     }
 }
 

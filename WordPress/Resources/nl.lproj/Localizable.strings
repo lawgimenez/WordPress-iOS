@@ -1,4 +1,4 @@
-/* Translation-Revision-Date: 2020-09-16 08:46:28+0000 */
+/* Translation-Revision-Date: 2020-10-09 17:06:56+0000 */
 /* Plural-Forms: nplurals=2; plural=n != 1; */
 /* Generator: GlotPress/3.0.0-alpha.2 */
 /* Language: nl */
@@ -196,12 +196,6 @@
 /* translators: accessibility text for blocks with invalid content. %d: localized block title */
 "%s block. This block has invalid content" = "%s blok. Dit blok heeft ongeldige inhoud";
 
-/* translators: %s: Name of the block */
-"'%s' isn't yet supported on WordPress for Android" = "'%s' wordt nog niet ondersteund in WordPress for Android";
-
-/* translators: %s: Name of the block */
-"'%s' isn't yet supported on WordPress for iOS" = "'%s' wordt nog niet ondersteund in WordPress for iOS";
-
 /* translators: sample content for \"Contact\" page template */
 "(555)555-1234" = "012-3456789";
 
@@ -392,14 +386,14 @@
 /* Add New Stats Card view title */
 "Add New Stats Card" = "Nieuwe statistiekenkaart toevoegen";
 
-/* Button Title. Tapping subscribes the user to a new tag. */
-"Add Tag" = "Tag toevoegen";
-
 /* No comment provided by engineer. */
 "Add To Beginning" = "Toevoegen aan begin";
 
 /* No comment provided by engineer. */
 "Add To End" = "Toevoegen aan einde";
+
+/* Button Title. Tapping subscribes the user to a new topic. */
+"Add Topic" = "Toevoegen onderwerp";
 
 /* No comment provided by engineer. */
 "Add URL" = "URL toevoegen";
@@ -413,9 +407,12 @@
 /* Add a profile photo to Me > My Profile */
 "Add a Profile Photo" = "Voeg een profielfoto toe";
 
-/* Title of a feature to add a new tag to the tags subscribed by the user.
-   Title. Lets the user know that they can use this feature to subscribe to new tags. */
-"Add a Tag" = "Voeg een tag toe";
+/* Title of a feature to add a new topic to the topics subscribed by the user.
+   Title. Lets the user know that they can use this feature to subscribe to new topics. */
+"Add a Topic" = "Voeg een onderwerp toe";
+
+/* Hint for the reader CSS URL field */
+"Add a custom CSS URL here to be loaded in Reader. If you're running Calypso locally this can be something like: http:\/\/192.168.15.23:3000\/calypso\/reader-mobile.css" = "Voeg een URL voor eigen CSS toe die geladen wordt in Lezer. Als je Calypso lokaal gebruikt, kan dit zoiets zijn: http:\/\/192.168.15.23:3000\/calypso\/reader-mobile.css";
 
 /* Invite Footer Text */
 "Add a custom message (optional)." = "Voeg een aangepast bericht toe (optioneel).";
@@ -435,8 +432,8 @@
 /* No Tags View Button Label */
 "Add a site" = "Voeg een site toe";
 
-/* No Tags View Button Label */
-"Add a tag" = "Voeg een tag toe";
+/* No Topics View Button Label */
+"Add a topic" = "Voeg een onderwerp toe";
 
 /* Accessibility description for adding an image to a new user account. Tapping this initiates that flow. */
 "Add account image." = "Voeg accountafbeelding toe.";
@@ -444,14 +441,11 @@
 /* No comment provided by engineer. */
 "Add annotation" = "Voeg aantekening toe";
 
-/* Placeholder text. A call to action for the user to type any tag to which they would like to subscribe. */
-"Add any tag" = "Voeg een tag toe";
+/* Placeholder text. A call to action for the user to type any topic to which they would like to subscribe. */
+"Add any topic" = "Voeg elk onderwerp toe";
 
 /* Accessibility hint text for adding an image to a new user account. */
 "Add image, or avatar, to represent this new account." = "Voeg een afbeelding of avatar toe, die bij dit nieuwe account hoort.";
-
-/* No comment provided by engineer. */
-"Add link text" = "Linktekst toevoegen";
 
 /* No comment provided by engineer. */
 "Add menu item above" = "Menu-item hierboven toevoegen";
@@ -464,6 +458,9 @@
 
 /* Screen reader text for Menus button that adds a new menu to a site. */
 "Add new menu" = "Nieuw menu toevoegen";
+
+/* Screen reader text for button that adds a menu item */
+"Add new menu item" = "Voeg een nieuw menu-item toe";
 
 /* Title of button to add a new site. */
 "Add new site" = "Voeg nieuwe site toe";
@@ -483,6 +480,15 @@
 
 /* Placeholder text for tags module in share extension. */
 "Add tags" = "Voeg tags toe";
+
+/* No comment provided by engineer. */
+"Add this email link" = "Voeg deze e-mail link toe";
+
+/* No comment provided by engineer. */
+"Add this link" = "Voeg deze link toe";
+
+/* No comment provided by engineer. */
+"Add this telephone link" = "Voeg deze telefoon link toe";
 
 /* User-facing string, presented to reflect that site assembly is underway. */
 "Adding site features" = "Sitefuncties toevoegen";
@@ -720,8 +726,8 @@
 /* Title of message shown when user taps update. */
 "Are you sure you want to update?" = "Weet je zeker dat je wilt updaten?";
 
-/* A short message asking the user if they wish to unfollow the specified tag. The %@ is a placeholder for the name of the tag. */
-"Are you sure you wish to remove the tag '%@'?" = "Weet je zeker dat je de tag '%@' wilt verwijderen?";
+/* A short message asking the user if they wish to unfollow the specified topic. The %@ is a placeholder for the name of the topic. */
+"Are you sure you wish to remove the topic '%@'?" = "Weet je zeker dat je het onderwerp '%@' wil verwijderen?";
 
 /* Message shown to users who have an old publicize connection to a facebook profile. */
 "As of August 1, 2018, Facebook no longer allows direct sharing of posts to Facebook Profiles. Connections to Facebook Pages remain unchanged." = "Vanaf 1 augustus 2018 kunnen berichten niet meer direct op Facebook-profielen worden gedeeld. Koppelingen aan Facebook-pagina's blijven ongewijzigd.";
@@ -834,6 +840,9 @@
 /* Text for related post cell preview */
 "Big iPhone\/iPad Update Now Available" = "Grote iPhone\/iPad update nu beschikbaar";
 
+/* No comment provided by engineer. */
+"Black" = "Zwart";
+
 /* Blacklist Title
    Settings: Comments Blacklist */
 "Blacklist" = "Blacklist";
@@ -888,6 +897,12 @@
 
 /* Blog's Viewer Profile. Displayed when the name is empty! */
 "Blog's Viewer" = "Blog's bezoeker";
+
+/* No comment provided by engineer. */
+"Blush bordeaux" = "Blozend bordeaux";
+
+/* No comment provided by engineer. */
+"Blush light purple" = "Blozend lichtpaars";
 
 /* Accessibility label for bold button on formatting toolbar.
    Discoverability title for bold formatting keyboard shortcut. */
@@ -1460,6 +1475,9 @@
 "Continuing with Apple" = "Ga verder met Apple";
 
 /* No comment provided by engineer. */
+"Cool to warm spectrum" = "Koel naar warm spectrum";
+
+/* No comment provided by engineer. */
 "Copied block" = "Gekopieerd blok";
 
 /* Copy link to oomment button title */
@@ -1471,11 +1489,11 @@
 /* This is one of the buttons we display inside of the prompt to review the app */
 "Could Be Better" = "Kan beter";
 
-/* Title of a prompt informing the user there was a probem unsubscribing from a tag in the reader. */
-"Could Not Follow Tag" = "Volgen van tag niet gelukt";
+/* Title of a prompt informing the user there was a probem unsubscribing from a topic in the reader. */
+"Could Not Follow Topic" = "Kon onderwerp niet volgen";
 
-/* Title of a prompt informing the user there was a probem unsubscribing from a tag in the reader. */
-"Could Not Remove Tag" = "Verwijderen van tag niet mogelijk";
+/* Title of a prompt informing the user there was a probem unsubscribing from a topic in the reader. */
+"Could Not Remove Topic" = "Kon onderwerp niet verwijderen";
 
 /* Title of an prompt letting the user know there was a problem saving. */
 "Could Not Save Changes" = "De wijzigingen konden niet worden opgeslagen";
@@ -1673,6 +1691,9 @@
 /* No comment provided by engineer. */
 "Cut block" = "Blok knippen";
 
+/* No comment provided by engineer. */
+"Cyan bluish gray" = "Cyaan blauwachtig grijs";
+
 /* Title for the app appearance setting for dark mode */
 "Dark" = "Donker";
 
@@ -1718,6 +1739,9 @@
    Title for screen to select a default post format for a blog */
 "Default Post Format" = "Standaard post format";
 
+/* Placeholder for the reader CSS URL */
+"Default URL" = "Standaard URL";
+
 /* Discussion Settings: Posts Section */
 "Defaults for New Posts" = "Standaardinstellingen voor nieuwe berichten";
 
@@ -1748,6 +1772,9 @@
 
 /* Title of alert when site deletion fails */
 "Delete Site Error" = "Fout bij het verwijderen van site";
+
+/* Screen Reader: Button that deletes a menu. */
+"Delete menu" = "Menu verwijderen";
 
 /* Delete Tag confirmation action title */
 "Delete this tag" = "Verwijder deze tag";
@@ -1840,6 +1867,9 @@
 /* Accessibility description for the %@ step of Quick Start. Tapping this dismisses the checklist for that particular step. */
 "Dismiss %@ Quick Start step" = "De stap %@ snelstart negeren";
 
+/* Accessibility hint for the continue button in the Feature Announcements screen. */
+"Dismiss announcements" = "Negeer aankondigingen";
+
 /* Display Name label text.
    My Profile display name label
    User's Display Name */
@@ -1888,6 +1918,9 @@
 
 /* translators: sample content for \"About\" page template */
 "Don’t cry because it’s over, smile because it happened." = "Treur niet om wat voorbij is, lach omdat het gebeurd is.";
+
+/* Screen reader hint for button that will move the menu item */
+"Double tap and hold to move this menu item up or down" = "Dubbel tikken en vasthouden om dit menu-item naar boven of beneden te verplaatsen";
 
 /* No comment provided by engineer. */
 "Double tap to add a block" = "Tik tweemaal om een blok toe te voegen";
@@ -1999,9 +2032,6 @@
    Opens the editor to edit an existing post. */
 "Edit Post" = "Bewerk bericht";
 
-/* No comment provided by engineer. */
-"Edit block in web browser" = "Bewerk blok in je browser";
-
 /* Explanation for the option to enable the block editor */
 "Edit new posts and pages with the block editor." = "Bewerk nieuwe berichten en pagina's met de blok-editor.";
 
@@ -2022,6 +2052,12 @@
 
 /* VoiceOver accessibility hint, informing the user the button can be used to Edit the Comment. */
 "Edits the comment." = "Wordt gebruikt om een reactie te bewerken.";
+
+/* Screen reader hint for button to edit a menu item */
+"Edits this menu item" = "Bewerkt dit menu-item";
+
+/* No comment provided by engineer. */
+"Electric grass" = "Electrisch gras";
 
 /* Accessibility label for the Email text field.
    Account Settings Email label
@@ -2391,8 +2427,8 @@
    Section title for sites the user has followed. */
 "Followed Sites" = "Gevolgde sites";
 
-/* Followed Tags Title */
-"Followed Tags" = "Gevolgde tags";
+/* Followed Topics Title */
+"Followed Topics" = "Gevolgde topics";
 
 /* User followed a site. */
 "Followed site" = "Gevolgde site";
@@ -2496,6 +2532,9 @@ translators: sample content for \"Services\" page template
 translators: sample content for \"Team\" page template */
 "Get in Touch" = "Neem contact op";
 
+/* Accessibility hint for the find out more button in the Feature Announcements screen. */
+"Get more details for this release" = "Krijg meer details voor deze release";
+
 /* Displayed in the Notifications Tab as a message, when the Follow Filter shows no notifications */
 "Get noticed: comment on posts you've read." = "Trek de aandacht: reageer op berichten die je hebt gelezen.";
 
@@ -2522,9 +2561,6 @@ translators: sample content for \"Team\" page template */
 
 /* Option to select the Gmail app when logging in with magic links */
 "Gmail" = "Gmail";
-
-/* No comment provided by engineer. */
-"Go back" = "Ga terug";
 
 /* Button title. Tapping lets the user view the sites they follow. */
 "Go to Following" = "Ga naar Volgers";
@@ -2643,9 +2679,6 @@ translators: sample content for \"Team\" page template */
 /* Link to Help section
    Title of the 'Help & Support' screen within the 'Me' tab - used for spotlight indexing on iOS. */
 "Help & Support" = "Help & ondersteuning";
-
-/* No comment provided by engineer. */
-"Help icon" = "Help-icoon";
 
 /* No comment provided by engineer. */
 "Here is the panel content!" = "Dit is de content van het venster!";
@@ -2984,6 +3017,12 @@ translators: sample content for \"Services\" page template */
 /* Title for the app appearance setting for light mode */
 "Light" = "Licht";
 
+/* No comment provided by engineer. */
+"Light green cyan" = "Licht groen cyaan";
+
+/* No comment provided by engineer. */
+"Light green cyan to vivid green cyan" = "Licht groen cyaan tot levendig groen cyaan";
+
 /* Like (verb)
    Like a post.
    Likes a Comment
@@ -3037,12 +3076,6 @@ translators: sample content for \"Services\" page template */
 
 /* Image link option title. */
 "Link To" = "Link naar";
-
-/* No comment provided by engineer. */
-"Link inserted" = "Link ingevoegd";
-
-/* No comment provided by engineer. */
-"Link text" = "Linktekst";
 
 /* Action. Label for navigate and display links to other posts on the site */
 "Link to existing content" = "Link naar bestaande inhoud";
@@ -3182,6 +3215,21 @@ translators: sample content for \"Services\" page template */
 /* Title of a button. */
 "Lost your password?" = "Wachtwoord vergeten?";
 
+/* No comment provided by engineer. */
+"Luminous dusk" = "Lichtgevende dageraad";
+
+/* No comment provided by engineer. */
+"Luminous vivid amber" = "Lichtgevend levendig amber";
+
+/* No comment provided by engineer. */
+"Luminous vivid amber to luminous vivid orange" = "Lichtgevend levendig amber tot lichtgevend levendig oranje";
+
+/* No comment provided by engineer. */
+"Luminous vivid orange" = "Lichtgevend levendig oranje";
+
+/* No comment provided by engineer. */
+"Luminous vivid orange to vivid red" = "Lichtgevend levendig oranje tot levendig rood";
+
 /* Option to select the Apple Mail app when logging in with magic links */
 "Mail (Default)" = "Mail (standaard)";
 
@@ -3309,6 +3357,9 @@ translators: sample content for \"Services\" page template */
 /* Screen reader string too choose a menu to edit. First %@ is the name of the menu area (Primary, Footer, etc...). Second %@ is name of the menu currently selected. %d is a number indicating the ammount of menus available in the selected menu area. */
 "Menu in area %@: %@, %d menus available" = "Menu in gebied %1$@: %2$@, %3$d menu's beschikbaar";
 
+/* Screen Reader: Description for text field that edits the menu name. */
+"Menu name" = "Menu naam";
+
 /* Menus option in the blog details
    Title for screen that allows configuration of your site's menus */
 "Menus" = "Menu's";
@@ -3322,6 +3373,9 @@ translators: sample content for \"Services\" page template */
 
 /* Option to select the Microsft Outlook app when logging in with magic links */
 "Microsoft Outlook" = "Microsoft Outlook";
+
+/* No comment provided by engineer. */
+"Midnight" = "Middernacht";
 
 /* Title for the mobile web preview */
 "Mobile" = "Mobiel";
@@ -3388,6 +3442,9 @@ translators: sample content for \"Services\" page template */
 /* Option to move Insight down in the view. */
 "Move down" = "Omlaag verplaatsen";
 
+/* Screen reader text for button that will move the menu item */
+"Move menu item" = "Verplaats menu-item";
+
 /* Label for a button that moves a page to the draft folder
    Label for an option that moves a post to the draft folder */
 "Move to Draft" = "Verplaatsen naar concept";
@@ -3453,9 +3510,6 @@ translators: sample content for \"Services\" page template */
 
 /* No comment provided by engineer. */
 "Navigates to customize the gradient" = "Navigeert naar aanpassen van het verloop";
-
-/* No comment provided by engineer. */
-"Navigates to the previous content sheet" = "Navigeert naar het vorige inhoudsblad";
 
 /* 'Need help?' button label, links off to the WP for iOS FAQ. */
 "Need Help?" = "Hulp nodig?";
@@ -3981,6 +4035,15 @@ translators: sample content for \"Services\" page template */
    Settings: Comments Paging preferences */
 "Paging" = "Paginatie";
 
+/* No comment provided by engineer. */
+"Pale cyan blue" = "Bleek cyaan blauw";
+
+/* No comment provided by engineer. */
+"Pale ocean" = "Bleek oceaan";
+
+/* No comment provided by engineer. */
+"Pale pink" = "Bleek roze";
+
 /* Placeholder to set a parent category for a new category.
    Title for selecting parent category of a category */
 "Parent Category" = "Bovenliggende categorie";
@@ -4501,8 +4564,12 @@ translators: sample content for \"Services\" page template */
    The accessibility value of the reader tab.
    The default title of the Reader
    The menu item to select during a guided tour.
-   Title of the 'Reader' tab - used for spotlight indexing on iOS. */
+   Title of the 'Reader' tab - used for spotlight indexing on iOS.
+   Title of the Reader section of the debug screen used in debug builds of the app */
 "Reader" = "Lezer";
+
+/* Title of the screen that allows the user to change the Reader CSS URL for debug builds */
+"Reader CSS URL" = "Lezer CSS URL";
 
 /* Text for the 'Reblog' button. */
 "Reblog" = "Herblog";
@@ -4623,9 +4690,6 @@ translators: sample content for \"Services\" page template */
 /* No comment provided by engineer. */
 "Remove annotations" = "Verwijder aantekeningen";
 
-/* No comment provided by engineer. */
-"Remove block" = "Verwijder blok";
-
 /* Option to remove Insight from view. */
 "Remove from insights" = "Verwijderen uit inzichten";
 
@@ -4686,6 +4750,9 @@ translators: sample content for \"Services\" page template */
 
 /* Placeholder text for replying to a post */
 "Reply to post…" = "Reageer op bericht…";
+
+/* The title of a button that triggers reporting of a post from the user's reader. */
+"Report This Post" = "Rapporteer dit bericht";
 
 /* An explaination of a setting. */
 "Require manual approval for comments that include more than this number of links." = "Vereist handmatige goedkeuring voor reacties die meer dan dit aantal links bevatten.";
@@ -4909,6 +4976,9 @@ translators: sample content for \"Services\" page template */
 /* A short message that is a call to action for the Reader's Search feature. */
 "Search WordPress\nfor a site or post" = "Zoeken op WordPress\nvoor een site of bericht";
 
+/* No comment provided by engineer. */
+"Search or type URL" = "Zoek of typ URL";
+
 /* Text displayed when the search controller will be presented */
 "Search pages" = "Zoek pagina's";
 
@@ -4999,6 +5069,9 @@ translators: sample content for \"Services\" page template */
 
 /* No comment provided by engineer. */
 "Select a layout" = "Selecteer een lay-out";
+
+/* No comment provided by engineer. */
+"Select item" = "Selecteer item";
 
 /* Accessibility hint for actions when displaying media items. */
 "Select media." = "Selecteer media.";
@@ -5621,13 +5694,9 @@ translators: sample content for \"Services\" page template */
    Label for the tags field. Should be the same as WP core.
    Label for the Tags Section in the Blog Settings
    Section title of the tags reader section.
-   Tags Filter Tab Title
    Tags menu item in share extension.
    Title for the tag selector view */
 "Tags" = "Tags";
-
-/* Tags Filter Tab Title with Count */
-"Tags (%lu)" = "Tags (%lu)";
 
 /* Insights 'Tags and Categories' header */
 "Tags and Categories" = "Tags en categorieën";
@@ -5655,9 +5724,6 @@ translators: sample content for \"Services\" page template */
 
 /* Accessibility hint */
 "Tap for more detail." = "Tik voor meer detail.";
-
-/* No comment provided by engineer. */
-"Tap here to show help" = "Tik hier om help te tonen";
 
 /* This is a status indicator on the editor */
 "Tap to cancel uploading." = "Tik om het uploaden te annuleren.";
@@ -6142,6 +6208,12 @@ translators: sample content for \"Services\" page template */
 /* Used when a Reader Topic is not found for a specific id */
 "Topic not found for id:" = "Onderwerp voor ID niet gevonden:";
 
+/* Topics Filter Tab Title */
+"Topics" = "Onderwerpen";
+
+/* Topics Filter Tab Title with Count */
+"Topics (%lu)" = "Onderwerpen (%lu)";
+
 /* Label for total followers */
 "Total" = "Totaal";
 
@@ -6573,6 +6645,9 @@ translators: sample content for \"Services\" page template */
 /* Message to show when a new plugin version is available */
 "Version %@ is available" = "Versie %@ is beschikbaar";
 
+/* No comment provided by engineer. */
+"Very light gray to cyan bluish gray" = "Zeer lichtgrijs tot cyaan blauwachtig grijs";
+
 /* Message shown if a video preview image is unavailable while the video is being uploaded. */
 "Video Preview Unavailable" = "Video preview niet beschikbaar";
 
@@ -6669,6 +6744,21 @@ translators: sample content for \"Services\" page template */
 /* translators: sample content for \"About\" page template */
 "Visitors will want to know who is on the other side of the page. Use this space to write about yourself, your site, your business, or anything you want. Use the testimonials below to quote others, talking about the same thing – in their own words." = "Bezoekers willen weten wie aan de andere kant van de pagina zit. Gebruik deze ruimte om wat te schrijven over jezelf, je site, je bedrijf of wat je maar wil. Gebruik de onderstaande testimonials om anderen te citeren die het over hetzelfde hebben.";
 
+/* No comment provided by engineer. */
+"Vivid cyan blue" = "Levendig cyaan blauw";
+
+/* No comment provided by engineer. */
+"Vivid cyan blue to vivid purple" = "Levendig cyaan blauw tot levendig paars";
+
+/* No comment provided by engineer. */
+"Vivid green cyan" = "Levendig groen cyaan";
+
+/* No comment provided by engineer. */
+"Vivid purple" = "Levendig paars";
+
+/* No comment provided by engineer. */
+"Vivid red" = "Levendig rood";
+
 /* Action title. Noun. Opens the user's WordPress Admin in an external browser. */
 "WP Admin" = "WP Admin";
 
@@ -6701,12 +6791,6 @@ translators: sample content for \"Services\" page template */
 
 /* Error message displayed when a refresh is taking longer than usual. The refresh hasn't failed and it might still succeed */
 "We are having trouble loading data" = "Er is een probleem bij het laden van gegevens";
-
-/* No comment provided by engineer. */
-"We are working hard to add more blocks with each release. In the meantime, you can also edit this block using your device's web browser." = "We werken er hard aan om met iedere release nieuwe blokken toe te voegen. Tot die tijd kan je dit blok ook op het web met je browser bewerken.";
-
-/* No comment provided by engineer. */
-"We are working hard to add more blocks with each release. In the meantime, you can also edit this post on the web." = "We werken er hard aan om met iedere release nieuwe blokken toe te voegen. Tot die tijd kan je dit bericht ook op het web bewerken.";
 
 /* Text displayed in notice after the app fails to upload a page, not new attempt will be made. */
 "We couldn't complete this action, and didn't publish this page." = "We konden deze handeling niet voltooien en hebben deze pagina niet gepubliceerd.";
@@ -6967,6 +7051,9 @@ translators: sample content for \"Services\" page template */
 /* Title displayed in popup when user has the option to load unsaved changes */
 "Which version would you like to edit?" = "Welke versie wil je bewerken?";
 
+/* No comment provided by engineer. */
+"White" = "Wit";
+
 /* Whitelisted IP Addresses Title */
 "Whitelisted IP Addresses" = "Toegestane IP-adressen";
 
@@ -7126,7 +7213,7 @@ translators: sample content for \"Services\" page template */
 "You are currently uploading media. This action will cancel uploads in progress.\n\nAre you sure?" = "Je bent media aan het uploaden. Met deze actie annuleer je de huidige uploads.\n\nWeet je het zeker?";
 
 /* Information shown below the optional password field after new account creation. */
-"You can always log in with a magic link like the one you just used, but you can also set up a password if you prefer." = "Je kunt altijd inloggen via de magische link zoals degene die je zojuist hebt gebruikt, maar als je wilt, kun je ook een wachtwoord instellen.";
+"You can always log in with a link like the one you just used, but you can also set up a password if you prefer." = "Je kunt altijd inloggen met een link zoals degene die je zojuist hebt gebruikt, maar kunt ook een wachtwoord instellen, als je wilt.";
 
 /* Action sheet title for setting Today Widget site to the current one */
 "You can display a single site's stats in the iOS Today\/Notification Center view." = "Je kunt de statistieken van één site weergeven in de weergave iOS Vandaag\/Berichtencentrum.";
@@ -7134,8 +7221,8 @@ translators: sample content for \"Services\" page template */
 /* No Sites View Label */
 "You can follow posts on a specific site by following it." = "Je kunt berichten op een bepaalde site volgen door deze te volgen.";
 
-/* No Tags View Label */
-"You can follow posts on a specific subject by adding a tag." = "Je kunt berichten over een bepaald onderwerp volgen door een tag toe te voegen.";
+/* No Topics View Label */
+"You can follow posts on a specific subject by adding a topic." = "Je kunt berichten over een bepaald onderwerp volgen door een onderwerp toe te voegen.";
 
 /* Discussion Settings: Footer Text */
 "You can override these settings for individual posts." = "Je kunt deze instellingen ongedaan maken voor individuele berichten.";
@@ -7370,6 +7457,9 @@ translators: sample content for \"Services\" page template */
 
 /* Label displayed on media items that are not video, image, or audio. */
 "other" = "andere";
+
+/* No comment provided by engineer. */
+"password" = "wachtwoord";
 
 /* Register Domain - Domain contact information field Phone */
 "phone number" = "Telefoonnummer";
