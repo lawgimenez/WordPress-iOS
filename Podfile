@@ -1,3 +1,7 @@
+# For security reasons, please always keep the wordpress-mobile source first and the CDN second.
+# For more info, see https://github.com/wordpress-mobile/cocoapods-specs#source-order-and-security-considerations
+install! 'cocoapods', warn_for_multiple_pod_sources: false
+source 'https://github.com/wordpress-mobile/cocoapods-specs.git'
 source 'https://cdn.cocoapods.org/'
 
 unless ['BUNDLE_BIN_PATH', 'BUNDLE_GEMFILE'].any? { |k| ENV.key?(k) }
@@ -7,14 +11,16 @@ end
 inhibit_all_warnings!
 use_frameworks!
 
-platform :ios, '11.0'
+app_ios_deployment_target = Gem::Version.new('13.0')
+
+platform :ios, app_ios_deployment_target.version
 workspace 'WordPress.xcworkspace'
 
 ## Pods shared between all the targets
 ## ===================================
 ##
 def wordpress_shared
-    pod 'WordPressShared', '~> 1.12.0'
+    pod 'WordPressShared', '~> 1.16.0'
     #pod 'WordPressShared', :git => 'https://github.com/wordpress-mobile/WordPress-iOS-Shared.git', :tag => ''
     #pod 'WordPressShared', :git => 'https://github.com/wordpress-mobile/WordPress-iOS-Shared.git', :branch => ''
     #pod 'WordPressShared', :git => 'https://github.com/wordpress-mobile/WordPress-iOS-Shared.git', :commit  => ''
@@ -29,11 +35,11 @@ def aztec
     #pod 'WordPress-Editor-iOS', :git => 'https://github.com/wordpress-mobile/AztecEditor-iOS.git', :commit => ''
     #pod 'WordPress-Editor-iOS', :git => 'https://github.com/wordpress-mobile/AztecEditor-iOS.git', :tag => ''
     #pod 'WordPress-Editor-iOS', :path => '../AztecEditor-iOS'
-    pod 'WordPress-Editor-iOS', '~> 1.19.3'
+    pod 'WordPress-Editor-iOS', '~> 1.19.4'
 end
 
 def wordpress_ui
-    pod 'WordPressUI', '~> 1.7.1'
+    pod 'WordPressUI', '~> 1.12.1-beta'
     #pod 'WordPressUI', :git => 'https://github.com/wordpress-mobile/WordPressUI-iOS', :tag => ''
     #pod 'WordPressUI', :git => 'https://github.com/wordpress-mobile/WordPressUI-iOS', :branch => ''
     #pod 'WordPressUI', :git => 'https://github.com/wordpress-mobile/WordPressUI-iOS', :commit => ''
@@ -41,11 +47,18 @@ def wordpress_ui
 end
 
 def wordpress_kit
-    pod 'WordPressKit', '~> 4.19'
-    #pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :tag => ''
-    #pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :branch => ''
-    #pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :commit => ''
-    #pod 'WordPressKit', :path => '../WordPressKit-iOS'
+    pod 'WordPressKit', '~> 4.36.0-beta'
+    # pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :tag => ''
+    # pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :branch => ''
+    # pod 'WordPressKit', :git => 'https://github.com/wordpress-mobile/WordPressKit-iOS.git', :commit => ''
+    # pod 'WordPressKit', :path => '../WordPressKit-iOS'
+end
+
+def kanvas
+  pod 'Kanvas', '~> 1.2.7'
+  #pod 'Kanvas', :git => 'https://github.com/tumblr/Kanvas-iOS.git', :tag => ''
+  #pod 'Kanvas', :git => 'https://github.com/tumblr/Kanvas-iOS.git', :commit => ''
+  #pod 'Kanvas', :path => '../Kanvas-iOS'
 end
 
 def shared_with_all_pods
@@ -62,19 +75,18 @@ def shared_with_networking_pods
 end
 
 def shared_test_pods
-    pod 'OHHTTPStubs', '6.1.0'
-    pod 'OHHTTPStubs/Swift', '6.1.0'
-    pod 'OCMock', '3.4.3'
+    pod 'OHHTTPStubs/Swift', '~> 9.1.0'
+    pod 'OCMock', '~> 3.4.3'
 end
 
 def shared_with_extension_pods
-    pod 'Gridicons', '~> 1.0.1'
+    pod 'Gridicons', '~> 1.1.0'
     pod 'ZIPFoundation', '~> 0.9.8'
     pod 'Down', '~> 0.6.6'
 end
 
 def gutenberg(options)
-    options[:git] = 'http://github.com/wordpress-mobile/gutenberg-mobile/'
+    options[:git] = 'https://github.com/wordpress-mobile/gutenberg-mobile.git'
     options[:submodules] = true
     local_gutenberg = ENV['LOCAL_GUTENBERG']
     if local_gutenberg
@@ -88,7 +100,6 @@ end
 
 def gutenberg_dependencies(options)
     dependencies = [
-        'FBReactNativeSpec',
         'FBLazyVector',
         'React',
         'ReactCommon',
@@ -105,12 +116,15 @@ def gutenberg_dependencies(options)
         'React-RCTSettings',
         'React-RCTText',
         'React-RCTVibration',
+        'React-callinvoker',
         'React-cxxreact',
         'React-jsinspector',
         'React-jsi',
         'React-jsiexecutor',
+        'React-perflogger',
+        'React-runtimeexecutor',
         'Yoga',
-        'Folly',
+        'RCT-Folly',
         'glog',
         'react-native-keyboard-aware-scroll-view',
         'react-native-safe-area',
@@ -119,7 +133,7 @@ def gutenberg_dependencies(options)
         'RNSVG',
         'ReactNativeDarkMode',
         'react-native-slider',
-        'react-native-linear-gradient',
+        'BVLinearGradient',
         'react-native-get-random-values',
         'react-native-blur',
         'RNScreens',
@@ -134,15 +148,15 @@ def gutenberg_dependencies(options)
         podspec_prefix = "https://raw.githubusercontent.com/wordpress-mobile/gutenberg-mobile/#{tag_or_commit}"
     end
 
+    # FBReactNativeSpec needs special treatment because of react-native-codegen code generation
+    pod 'FBReactNativeSpec', :podspec => "#{podspec_prefix}/third-party-podspecs/FBReactNativeSpec/FBReactNativeSpec.podspec.json"
+
     for pod_name in dependencies do
         pod pod_name, :podspec => "#{podspec_prefix}/third-party-podspecs/#{pod_name}.podspec.json"
     end
 end
 
-## WordPress iOS
-## =============
-##
-target 'WordPress' do
+abstract_target 'Apps' do
     project 'WordPress/WordPress.xcodeproj'
 
     shared_with_all_pods
@@ -152,19 +166,19 @@ target 'WordPress' do
     ## Gutenberg (React Native)
     ## =====================
     ##
-    gutenberg :tag => 'v1.39.0'
+    gutenberg :tag => 'v1.56.0-alpha4'
 
     ## Third party libraries
     ## =====================
     ##
     pod 'Charts', '~> 3.2.2'
     pod 'Gifu', '3.2.0'
-    pod 'AppCenter', '2.5.1', :configurations => ['Release-Internal', 'Release-Alpha']
-    pod 'AppCenter/Distribute', '2.5.1', :configurations => ['Release-Internal', 'Release-Alpha']
+    pod 'AppCenter', '4.1.1', :configurations => ['Release-Internal', 'Release-Alpha']
+    pod 'AppCenter/Distribute', '4.1.1', :configurations => ['Release-Internal', 'Release-Alpha']
     pod 'MRProgress', '0.8.3'
     pod 'Starscream', '3.0.6'
     pod 'SVProgressHUD', '2.2.5'
-    pod 'ZendeskSupportSDK', '5.0.0'
+    pod 'ZendeskSupportSDK', '5.3.0'
     pod 'AlamofireImage', '3.5.2'
     pod 'AlamofireNetworkActivityIndicator', '~> 2.4'
     pod 'FSInteractiveMap', :git => 'https://github.com/wordpress-mobile/FSInteractiveMap.git', :tag => '0.2.0'
@@ -177,12 +191,13 @@ target 'WordPress' do
     ##
     wordpress_kit
     wordpress_shared
+    kanvas
 
     # Production
 
-    pod 'Automattic-Tracks-iOS', '~> 0.5.1'
+    pod 'Automattic-Tracks-iOS', '~> 0.8.5'
     # While in PR
-    #pod 'Automattic-Tracks-iOS', :git => 'https://github.com/Automattic/Automattic-Tracks-iOS.git', :branch => 'add/more-logging'
+    # pod 'Automattic-Tracks-iOS', :git => 'https://github.com/Automattic/Automattic-Tracks-iOS.git', :branch => ''
     # Local Development
     #pod 'Automattic-Tracks-iOS', :path => '~/Projects/Automattic-Tracks-iOS'
 
@@ -194,9 +209,9 @@ target 'WordPress' do
     # pod 'WPMediaPicker', :git => 'https://github.com/wordpress-mobile/MediaPicker-iOS.git', :branch => ''
     # pod 'WPMediaPicker', :path => '../MediaPicker-iOS'
 
-    pod 'Gridicons', '~> 1.0.1'
+    pod 'Gridicons', '~> 1.1.0'
 
-    pod 'WordPressAuthenticator', '~> 1.27.0'
+    pod 'WordPressAuthenticator', '~> 1.38.0'
     # While in PR
     # pod 'WordPressAuthenticator', :git => 'https://github.com/wordpress-mobile/WordPressAuthenticator-iOS.git', :branch => ''
     # pod 'WordPressAuthenticator', :git => 'https://github.com/wordpress-mobile/WordPressAuthenticator-iOS.git', :commit => ''
@@ -209,71 +224,24 @@ target 'WordPress' do
     aztec
     wordpress_ui
 
-    target 'WordPressTest' do
-        inherit! :search_paths
+    ## WordPress App iOS
+    ## =================
+    ##
+    target 'WordPress' do
+        target 'WordPressTest' do
+            inherit! :search_paths
 
-        shared_test_pods
-        pod 'Nimble', '~> 7.3.1'
+            shared_test_pods
+            pod 'Nimble', '~> 9.0.0'
+        end
     end
 
-
-    post_install do
-        project_root = File.dirname(__FILE__)
-
-        puts 'Patching RCTShadowView to fix nested group block - it could be removed after upgrade to 0.62'
-        %x(patch "#{project_root}/Pods/React-Core/React/Views/RCTShadowView.m" < "#{project_root}/patches/RN-RCTShadowView.patch")
-        puts 'Patching RCTActionSheet to add possibility to disable action sheet buttons -
-        it could be removed once PR with that functionality will be merged into RN'
-        %x(patch "#{project_root}/Pods/React-RCTActionSheet/RCTActionSheetManager.m" < "#{project_root}/patches/RN-RCTActionSheetManager.patch")
-        puts 'Patching RCTUIImageViewAnimated to fix a problem where images will not load when built using the iOS 14 SDK (Xcode 12) -
-        it can be removed once we upgrade Gutenberg to use RN 0.63 or later'
-        %x(patch "#{project_root}/Pods/React-RCTImage/RCTUIImageViewAnimated.m" < "#{project_root}/patches/RN-RCTUIImageViewAnimated.patch")
-
-        ## Convert the 3rd-party license acknowledgements markdown into html for use in the app
-        require 'commonmarker'
-
-        acknowledgements = 'Acknowledgments'
-        markdown = File.read("#{project_root}/Pods/Target Support Files/Pods-WordPress/Pods-WordPress-acknowledgements.markdown")
-        rendered_html = CommonMarker.render_html(markdown, :DEFAULT)
-        styled_html = "<head>
-                         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-                         <style>
-                           body {
-                             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-                             font-size: 16px;
-                             color: #1a1a1a;
-                             margin: 20px;
-                           }
-                          @media (prefers-color-scheme: dark) {
-                           body {
-                            background: #1a1a1a;
-                            color: white;
-                           }
-                          }
-                           pre {
-                            white-space: pre-wrap;
-                           }
-                         </style>
-                         <title>
-                           #{acknowledgements}
-                         </title>
-                       </head>
-                       <body>
-                         #{rendered_html}
-                       </body>"
-
-          ## Remove the <h1>, since we've promoted it to <title>
-          styled_html = styled_html.sub("<h1>Acknowledgements</h1>", '')
-
-          ## The glog library's license contains a URL that does not wrap in the web view,
-          ## leading to a large right-hand whitespace gutter.  Work around this by explicitly
-          ## inserting a <br> in the HTML.  Use gsub juuust in case another one sneaks in later.
-          styled_html = styled_html.gsub('p?hl=en#dR3YEbitojA/COPYING', 'p?hl=en#dR3YEbitojA/COPYING<br>')
-
-        File.write("#{project_root}/Pods/Target Support Files/Pods-WordPress/acknowledgements.html", styled_html)
+    ## Jetpack App iOS
+    ## ===============
+    ##
+    target 'Jetpack' do
     end
 end
-
 
 ## Share Extension
 ## ===============
@@ -341,6 +309,30 @@ target 'WordPressThisWeekWidget' do
     wordpress_ui
 end
 
+## iOS 14 Today Widget
+## ============
+##
+target 'WordPressStatsWidgets' do
+    project 'WordPress/WordPress.xcodeproj'
+
+    shared_with_all_pods
+    shared_with_networking_pods
+
+    wordpress_ui
+end
+
+## Intents
+## ============
+##
+target 'WordPressIntents' do
+    project 'WordPress/WordPress.xcodeproj'
+
+    shared_with_all_pods
+    shared_with_networking_pods
+
+    wordpress_ui
+end
+
 ## Notification Content Extension
 ## ==============================
 ##
@@ -370,9 +362,9 @@ end
 ## ===================
 ##
 def wordpress_mocks
-  pod 'WordPressMocks', '~> 0.0.9'
+  pod 'WordPressMocks', '~> 0.0.13'
   # pod 'WordPressMocks', :git => 'https://github.com/wordpress-mobile/WordPressMocks.git', :commit => ''
-  # pod 'WordPressMocks', :git => 'https://github.com/wordpress-mobile/WordPressMocks.git', :branch => ''
+  # pod 'WordPressMocks', :git => 'https://github.com/wordpress-mobile/WordPressMocks.git', :branch => 'task/jetpack-screenshots-dynamic-dates'
   # pod 'WordPressMocks', :path => '../WordPressMocks'
 end
 
@@ -384,7 +376,6 @@ target 'WordPressScreenshotGeneration' do
     project 'WordPress/WordPress.xcodeproj'
 
     wordpress_mocks
-    pod 'SimulatorStatusMagic'
 end
 
 ## UI Tests
@@ -425,4 +416,62 @@ pre_install do |installer|
     end
     puts "Installing #{static.count} pods as static frameworks"
     puts "Installing #{dynamic.count} pods as dynamic frameworks"
+end
+
+post_install do |installer|
+    project_root = File.dirname(__FILE__)
+
+    ## Convert the 3rd-party license acknowledgements markdown into html for use in the app
+    require 'commonmarker'
+
+    acknowledgements = 'Acknowledgments'
+    markdown = File.read("#{project_root}/Pods/Target Support Files/Pods-Apps-WordPress/Pods-Apps-WordPress-acknowledgements.markdown")
+    rendered_html = CommonMarker.render_html(markdown, :DEFAULT)
+    styled_html = "<head>
+                     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+                     <style>
+                       body {
+                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                         font-size: 16px;
+                         color: #1a1a1a;
+                         margin: 20px;
+                       }
+                      @media (prefers-color-scheme: dark) {
+                       body {
+                        background: #1a1a1a;
+                        color: white;
+                       }
+                      }
+                       pre {
+                        white-space: pre-wrap;
+                       }
+                     </style>
+                     <title>
+                       #{acknowledgements}
+                     </title>
+                   </head>
+                   <body>
+                     #{rendered_html}
+                   </body>"
+
+      ## Remove the <h1>, since we've promoted it to <title>
+      styled_html = styled_html.sub("<h1>Acknowledgements</h1>", '')
+
+      ## The glog library's license contains a URL that does not wrap in the web view,
+      ## leading to a large right-hand whitespace gutter.  Work around this by explicitly
+      ## inserting a <br> in the HTML.  Use gsub juuust in case another one sneaks in later.
+      styled_html = styled_html.gsub('p?hl=en#dR3YEbitojA/COPYING', 'p?hl=en#dR3YEbitojA/COPYING<br>')
+
+    File.write("#{project_root}/Pods/Target Support Files/Pods-Apps-WordPress/acknowledgements.html", styled_html)
+
+    # Let Pods targets inherit deployment target from the app
+    # This solution is suggested here: https://github.com/CocoaPods/CocoaPods/issues/4859
+    # =====================================
+    #
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |configuration|
+        pod_ios_deployment_target = Gem::Version.new(configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'])
+        configuration.build_settings.delete 'IPHONEOS_DEPLOYMENT_TARGET' if pod_ios_deployment_target <= app_ios_deployment_target
+      end
+    end
 end

@@ -85,7 +85,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
     /// Activity Indicator to be shown when refreshing a Jetpack site status.
     ///
     let activityIndicator: UIActivityIndicatorView = {
-        let indicator = UIActivityIndicatorView(style: .white)
+        let indicator = UIActivityIndicatorView(style: .medium)
         indicator.hidesWhenStopped = true
         return indicator
     }()
@@ -164,6 +164,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
         }
 
         showNoResultsViewIfNeeded()
+        selectFirstNotificationIfAppropriate()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -188,7 +189,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
         showNotificationPrimerAlertIfNeeded()
         showSecondNotificationsAlertIfNeeded()
 
-        if FeatureFlag.whatIsNew.enabled {
+        if AppConfiguration.showsWhatIsNew {
             WPTabBarController.sharedInstance()?.presentWhatIsNew(on: self)
         }
     }
@@ -445,6 +446,7 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
     }
 
     fileprivate func configureDetailsViewController(_ detailsViewController: NotificationDetailsViewController, withNote note: Notification) {
+        detailsViewController.navigationItem.largeTitleDisplayMode = .never
         detailsViewController.dataSource = self
         detailsViewController.note = note
         detailsViewController.onDeletionRequestCallback = { request in
@@ -462,8 +464,15 @@ class NotificationsViewController: UITableViewController, UIViewControllerRestor
 //
 private extension NotificationsViewController {
     func setupNavigationBar() {
+        if FeatureFlag.newNavBarAppearance.enabled {
+            navigationController?.navigationBar.prefersLargeTitles = true
+            navigationItem.largeTitleDisplayMode = .always
+        }
+
         // Don't show 'Notifications' in the next-view back button
-        navigationItem.backBarButtonItem = UIBarButtonItem(title: String(), style: .plain, target: nil, action: nil)
+        // we are using a space character because we need a non-empty string to ensure a smooth
+        // transition back, with large titles enabled.
+        navigationItem.backBarButtonItem = UIBarButtonItem(title: " ", style: .plain, target: nil, action: nil)
         navigationItem.title = NSLocalizedString("Notifications", comment: "Notifications View Controller title")
     }
 
@@ -669,6 +678,7 @@ extension NotificationsViewController {
         //
         if let postID = note.metaPostID, let siteID = note.metaSiteID, note.kind == .matcher || note.kind == .newPost {
             let readerViewController = ReaderDetailViewController.controllerWithPostID(postID, siteID: siteID)
+            readerViewController.navigationItem.largeTitleDisplayMode = .never
             showDetailViewController(readerViewController, sender: nil)
 
             return
@@ -692,8 +702,11 @@ extension NotificationsViewController {
     /// Tracks: Details Event!
     ///
     private func trackWillPushDetails(for note: Notification) {
-        let properties = [Stats.noteTypeKey: note.type ?? Stats.noteTypeUnknown]
-        WPAnalytics.track(.openedNotificationDetails, withProperties: properties)
+        // Ensure we don't track if the app has been launched by a push notification in the background
+        if UIApplication.shared.applicationState != .background {
+            let properties = [Stats.noteTypeKey: note.type ?? Stats.noteTypeUnknown]
+            WPAnalytics.track(.openedNotificationDetails, withProperties: properties)
+        }
     }
 
     /// Failsafe: Make sure the Notifications List is onscreen!
@@ -988,7 +1001,7 @@ extension NotificationsViewController {
     @objc func selectedFilterDidChange(_ filterBar: FilterTabBar) {
         selectedNotification = nil
 
-        let properties = [Stats.selectedFilter: filter.title]
+        let properties = [Stats.selectedFilter: filter.analyticsTitle]
         WPAnalytics.track(.notificationsTappedSegmentedControl, withProperties: properties)
 
         updateUnreadNotificationsForFilterTabChange()
@@ -1016,7 +1029,9 @@ extension NotificationsViewController {
         // (i.e. don't add an empty detail VC if the primary is full width)
         if let splitViewController = splitViewController as? WPSplitViewController,
             splitViewController.wpPrimaryColumnWidth != WPSplitViewControllerPrimaryColumnWidth.full {
-            showDetailViewController(UIViewController(), sender: nil)
+            let controller = UIViewController()
+            controller.navigationItem.largeTitleDisplayMode = .never
+            showDetailViewController(controller, sender: nil)
         }
     }
 
@@ -1196,18 +1211,18 @@ extension NotificationsViewController: WPTableViewHandlerDelegate {
 //
 private extension NotificationsViewController {
     func showFiltersSegmentedControlIfApplicable() {
-        guard tableHeaderView.alpha == WPAlphaZero && shouldDisplayFilters == true else {
+        guard filterTabBar.isHidden == true && shouldDisplayFilters == true else {
             return
         }
 
         UIView.animate(withDuration: WPAnimationDurationDefault, animations: {
-            self.tableHeaderView.alpha = WPAlphaFull
+            self.filterTabBar.isHidden = false
         })
     }
 
     func hideFiltersSegmentedControlIfApplicable() {
-        if tableHeaderView.alpha == WPAlphaFull && shouldDisplayFilters == false {
-            tableHeaderView.alpha = WPAlphaZero
+        if filterTabBar.isHidden == false && shouldDisplayFilters == false {
+            self.filterTabBar.isHidden = true
         }
     }
 
@@ -1257,18 +1272,25 @@ private extension NotificationsViewController {
         addChild(noResultsViewController)
         tableView.insertSubview(noResultsViewController.view, belowSubview: tableHeaderView)
         noResultsViewController.view.frame = tableView.frame
-        adjustNoResultsViewSize()
+        setupNoResultsViewConstraints()
         noResultsViewController.didMove(toParent: self)
     }
 
-    func adjustNoResultsViewSize() {
-        noResultsViewController.view.frame.origin.y = tableHeaderView.frame.size.height
-
-        if inlinePromptView.alpha == WPAlphaFull {
-            noResultsViewController.view.frame.size.height -= tableHeaderView.frame.size.height
-        } else {
-            noResultsViewController.view.frame.size.height = tableView.frame.size.height - tableHeaderView.frame.size.height
+    func setupNoResultsViewConstraints() {
+        guard let nrv = noResultsViewController.view else {
+            return
         }
+
+        tableHeaderView.translatesAutoresizingMaskIntoConstraints = false
+        nrv.translatesAutoresizingMaskIntoConstraints = false
+        nrv.setContentHuggingPriority(.defaultLow, for: .horizontal)
+
+        NSLayoutConstraint.activate([
+            nrv.widthAnchor.constraint(equalTo: view.widthAnchor),
+            nrv.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            nrv.topAnchor.constraint(equalTo: tableHeaderView.bottomAnchor),
+            nrv.bottomAnchor.constraint(equalTo: view.safeBottomAnchor)
+        ])
     }
 
     func updateSplitViewAppearanceForNoResultsView() {
@@ -1295,11 +1317,17 @@ private extension NotificationsViewController {
         return filter.noResultsTitle
     }
 
-    var noResultsMessageText: String {
+    var noResultsMessageText: String? {
+        guard AppConfiguration.showsReader else {
+            return nil
+        }
         return filter.noResultsMessage
     }
 
-    var noResultsButtonText: String {
+    var noResultsButtonText: String? {
+        guard AppConfiguration.showsReader else {
+            return nil
+        }
         return filter.noResultsButtonTitle
     }
 
@@ -1491,25 +1519,11 @@ private extension NotificationsViewController {
 //
 extension NotificationsViewController: WPSplitViewControllerDetailProvider {
     func initialDetailViewControllerForSplitView(_ splitView: WPSplitViewController) -> UIViewController? {
-        guard let note = selectedNotification ?? fetchFirstNotification() else {
-            return nil
-        }
-
-        selectedNotification = note
-
-        trackWillPushDetails(for: note)
-        ensureNotificationsListIsOnscreen()
-
-        if let postID = note.metaPostID, let siteID = note.metaSiteID, note.kind == .matcher || note.kind == .newPost {
-            return ReaderDetailViewController.controllerWithPostID(postID, siteID: siteID)
-        }
-
-        if let detailsViewController = storyboard?.instantiateViewController(withIdentifier: "NotificationDetailsViewController") as? NotificationDetailsViewController {
-            configureDetailsViewController(detailsViewController, withNote: note)
-            return detailsViewController
-        }
-
-        return nil
+        // The first notification view will be populated by `selectFirstNotificationIfAppropriate`
+        // on viewWillAppear, so we'll just return an empty view here.
+        let controller = UIViewController()
+        controller.view.backgroundColor = .basicBackground
+        return controller
     }
 
     private func fetchFirstNotification() -> Notification? {
@@ -1624,6 +1638,16 @@ private extension NotificationsViewController {
             }
         }
 
+        var analyticsTitle: String {
+            switch self {
+            case .none:     return "All"
+            case .unread:   return "Unread"
+            case .comment:  return "Comments"
+            case .follow:   return "Follows"
+            case .like:     return "Likes"
+            }
+        }
+
         var noResultsTitle: String {
             switch self {
             case .none:     return NSLocalizedString("No notifications yet",
@@ -1717,7 +1741,7 @@ extension NotificationsViewController: UIViewControllerTransitioningDelegate {
     }
 
     private func notificationAlertApproveAction(_ controller: FancyAlertViewController) {
-        InteractiveNotificationsManager.shared.requestAuthorization {
+        InteractiveNotificationsManager.shared.requestAuthorization { _ in
             DispatchQueue.main.async {
                 controller.dismiss(animated: true)
             }
@@ -1769,5 +1793,14 @@ extension NotificationsViewController: UIViewControllerTransitioningDelegate {
         // number of notifications after which the second alert will show up
         static let secondNotificationsAlertThreshold = 10
         static let secondNotificationsAlertDisabled = -1
+    }
+}
+
+// MARK: - Scrolling
+//
+extension NotificationsViewController: WPScrollableViewController {
+    // Used to scroll view to top when tapping on tab bar item when VC is already visible.
+    func scrollViewToTop() {
+        tableView.scrollRectToVisible(CGRect(x: 0, y: 0, width: 1, height: 1), animated: true)
     }
 }

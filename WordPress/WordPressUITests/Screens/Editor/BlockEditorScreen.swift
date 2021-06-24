@@ -1,4 +1,4 @@
-import Foundation
+import UITestsFoundation
 import XCTest
 
 class BlockEditorScreen: BaseScreen {
@@ -49,7 +49,7 @@ class BlockEditorScreen: BaseScreen {
      - Parameter withText: the text to enter in the paragraph block
      */
     func addParagraphBlock(withText text: String) -> BlockEditorScreen {
-        addBlock("Paragraph")
+        addBlock("Paragraph block")
         paragraphView.typeText(text)
 
         return self
@@ -59,7 +59,7 @@ class BlockEditorScreen: BaseScreen {
      Adds an image block with latest image from device.
      */
     func addImage() -> BlockEditorScreen {
-        addBlock("Image")
+        addBlock("Image block")
         addImageByOrder(id: 0)
 
         return self
@@ -121,14 +121,13 @@ class BlockEditorScreen: BaseScreen {
 
     private func addBlock(_ blockLabel: String) {
         addBlockButton.tap()
-        XCUIApplication().otherElements[blockLabel].tap()
+        XCUIApplication().buttons[blockLabel].tap()
     }
 
     /*
      Select Image from Camera Roll by its ID. Starts with 0
      */
     private func addImageByOrder(id: Int) {
-        imagePlaceholder.tap()
         imageDeviceButton.tap()
 
         // Allow access to device media

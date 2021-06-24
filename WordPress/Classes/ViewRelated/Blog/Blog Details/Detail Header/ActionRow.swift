@@ -3,9 +3,9 @@ class ActionButton: UIView {
     private enum Constants {
         static let maxButtonSize: CGFloat = 56
         static let spacing: CGFloat = 8
-        static let borderColor = UIColor.secondaryButtonBorder
-        static let backgroundColor = UIColor.secondaryButtonBackground
-        static let selectedBackgroundColor = UIColor.secondaryButtonDownBackground
+        static let borderColor = UIColor.quickActionButtonBorder
+        static let backgroundColor = UIColor.quickActionButtonBackground
+        static let selectedBackgroundColor = UIColor.quickActionSelectedBackground
         static let iconColor = UIColor.listIcon
     }
 
@@ -92,5 +92,24 @@ class ActionRow: UIStackView {
         distribution = .equalCentering
         spacing = Constants.minimumSpacing
         translatesAutoresizingMaskIntoConstraints = false
+        refreshStackViewVisibility()
+    }
+
+    // MARK: - Accessibility
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+
+        refreshStackViewVisibility()
+    }
+
+    private func refreshStackViewVisibility() {
+        for view in arrangedSubviews {
+            if traitCollection.preferredContentSizeCategory.isAccessibilityCategory {
+                view.isHidden = true
+            } else {
+                view.isHidden = false
+            }
+        }
     }
 }

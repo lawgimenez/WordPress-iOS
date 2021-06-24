@@ -1,4 +1,4 @@
-import Foundation
+import UITestsFoundation
 import XCTest
 
 class MeTabScreen: BaseScreen {
@@ -55,5 +55,17 @@ class MeTabScreen: BaseScreen {
         }
 
         return PrologueScreen()
+    }
+
+    func goToLoginFlow() -> PrologueScreen {
+        app.cells["Log In"].tap()
+
+        return PrologueScreen()
+    }
+
+    func dismiss() -> MySiteScreen {
+        app.buttons["Done"].tap()
+
+        return MySiteScreen()
     }
 }

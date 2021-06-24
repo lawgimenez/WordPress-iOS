@@ -2,7 +2,6 @@
 #import <XCTest/XCTest.h>
 
 #import "AccountService.h"
-#import "ApiCredentials.h"
 #import "WPAppAnalytics.h"
 #import "WPAnalyticsTrackerWPCom.h"
 @import OCMock;
@@ -154,6 +153,13 @@ typedef void(^OCMockInvocationBlock)(NSInvocation* invocation);
     XCTAssert([analytics isKindOfClass:[WPAppAnalytics class]]);
 
     XCTAssertTrue([WPAppAnalytics userHasOptedOut]);
+}
+
+- (void)testSiteTypeForBlog
+{
+    NSString *siteType = [WPAppAnalytics siteTypeForBlogWithID: @99999999];
+    XCTAssertNotNil(siteType);
+    XCTAssertTrue([siteType isEqualToString:@"blog"]);
 }
 
 @end

@@ -2,26 +2,15 @@ import Gridicons
 import WordPressFlux
 
 extension BlogDetailsViewController {
-    @objc func configureHeaderView() -> BlogDetailHeaderView {
-        let headerView = BlogDetailHeaderView(items: [
-            ActionRow.Item(image: .gridicon(.statsAlt), title: NSLocalizedString("Stats", comment: "Noun. Abbv. of Statistics. Links to a blog's Stats screen.")) { [weak self] in
-                self?.tableView.deselectSelectedRowWithAnimation(false)
-                self?.showStats(from: .button)
-            },
-            ActionRow.Item(image: .gridicon(.pages), title: NSLocalizedString("Pages", comment: "Noun. Title. Links to the blog's Pages screen.")) { [weak self] in
-                self?.tableView.deselectSelectedRowWithAnimation(false)
-                self?.showPageList(from: .button)
-            },
-            ActionRow.Item(image: .gridicon(.posts), title: NSLocalizedString("Posts", comment: "Noun. Title. Links to the blog's Posts screen.")) { [weak self] in
-                self?.tableView.deselectSelectedRowWithAnimation(false)
-                self?.showPostList(from: .button)
-            },
-            ActionRow.Item(image: .gridicon(.image), title: NSLocalizedString("Media", comment: "Noun. Title. Links to the blog's Media library.")) { [weak self] in
-                self?.tableView.deselectSelectedRowWithAnimation(false)
-                self?.showMediaLibrary(from: .button)
-            }
-        ])
-        return headerView
+    @objc func configureHeaderView() -> BlogDetailHeader {
+
+        let actionItems = createActionItems()
+
+        guard Feature.enabled(.newNavBarAppearance) else {
+            return BlogDetailHeaderView(items: actionItems)
+        }
+
+        return NewBlogDetailHeaderView(items: actionItems)
     }
 
     @objc
@@ -44,6 +33,33 @@ extension BlogDetailsViewController {
         present(navigationController, animated: true)
     }
 
+    private func createActionItems() -> [ActionRow.Item] {
+        guard AppConfiguration.showsQuickActions else {
+            return []
+        }
+
+        let actionItems: [ActionRow.Item] = [
+            .init(image: .gridicon(.statsAlt), title: NSLocalizedString("Stats", comment: "Noun. Abbv. of Statistics. Links to a blog's Stats screen.")) { [weak self] in
+                self?.tableView.deselectSelectedRowWithAnimation(false)
+                self?.showStats(from: .button)
+            },
+            .init(image: .gridicon(.posts), title: NSLocalizedString("Posts", comment: "Noun. Title. Links to the blog's Posts screen.")) { [weak self] in
+                self?.tableView.deselectSelectedRowWithAnimation(false)
+                self?.showPostList(from: .button)
+            },
+            .init(image: .gridicon(.image), title: NSLocalizedString("Media", comment: "Noun. Title. Links to the blog's Media library.")) { [weak self] in
+                self?.tableView.deselectSelectedRowWithAnimation(false)
+                self?.showMediaLibrary(from: .button)
+            },
+            .init(image: .gridicon(.pages), title: NSLocalizedString("Pages", comment: "Noun. Title. Links to the blog's Pages screen.")) { [weak self] in
+                self?.tableView.deselectSelectedRowWithAnimation(false)
+                self?.showPageList(from: .button)
+            }
+        ]
+
+        return actionItems
+    }
+
     private func saveSiteTitleSettings(_ title: String) {
         // We'll only save for admin users, and if the title has actually changed
         guard title != blog.settings?.name,
@@ -62,6 +78,10 @@ extension BlogDetailsViewController {
         // Save the old value in case we need to roll back
         let existingBlogTitle = blog.settings?.name ?? SiteTitleStrings.defaultSiteTitle
         blog.settings?.name = title
+        headerView.setTitleLoading(true)
+
+        QuickStartTourGuide.shared.complete(tour: QuickStartSiteTitleTour(),
+                                                    silentlyForBlog: blog)
 
         let service = BlogService(managedObjectContext: context)
         service.updateSettings(for: blog, success: { [weak self] in
@@ -72,10 +92,11 @@ extension BlogDetailsViewController {
                                 feedbackType: .success)
             ActionDispatcher.global.dispatch(NoticeAction.post(notice))
 
+            self?.headerView.setTitleLoading(false)
             self?.headerView.refreshSiteTitle()
         }, failure: { [weak self] error in
             self?.blog.settings?.name = existingBlogTitle
-
+            self?.headerView.setTitleLoading(false)
             let notice = Notice(title: SiteTitleStrings.settingsSaveErrorTitle,
                                 message: SiteTitleStrings.settingsSaveErrorMessage,
                                 feedbackType: .error)

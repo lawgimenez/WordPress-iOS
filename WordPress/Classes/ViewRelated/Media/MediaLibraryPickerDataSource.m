@@ -28,6 +28,15 @@
 
 - (instancetype)initWithBlog:(Blog *)blog
 {
+    /// Temporary logging to try and narrow down an issue:
+    ///
+    /// REF: https://github.com/wordpress-mobile/WordPress-iOS/issues/15335
+    ///
+    if (blog == nil || blog.objectID == nil) {
+        DDLogError(@"🔴 Error: missing object ID (please contact @diegoreymendez with this log)");
+        DDLogError(@"%@", [NSThread callStackSymbols]);
+    }
+    
     self = [super init];
     if (self) {
         _mediaGroup = [[MediaLibraryGroup alloc] initWithBlog:blog];
@@ -139,6 +148,15 @@
     // try to sync from the server
     MediaCoordinator *mediaCoordinator = [MediaCoordinator shared];
 
+    /// Temporary logging to try and narrow down an issue:
+    ///
+    /// REF: https://github.com/wordpress-mobile/WordPress-iOS/issues/15335
+    ///
+    if (self.blog == nil || self.blog.objectID == nil) {
+        DDLogError(@"🔴 Error: missing object ID (please contact @diegoreymendez with this log)");
+        DDLogError(@"%@", [NSThread callStackSymbols]);
+    }
+    
     __block BOOL ignoreSyncError = self.ignoreSyncErrors;
     [mediaCoordinator syncMediaFor:self.blog
                            success:^{
@@ -344,7 +362,7 @@
         return nil;
     }
     [mainContext performBlockAndWait:^{
-        NSManagedObjectID *assetID = [[[ContextManager sharedInstance] persistentStoreCoordinator] managedObjectIDForURIRepresentation:assetURL];
+        NSManagedObjectID *assetID = [[mainContext persistentStoreCoordinator] managedObjectIDForURIRepresentation:assetURL];
         media = (Media *)[mainContext objectWithID:assetID];
     }];
 

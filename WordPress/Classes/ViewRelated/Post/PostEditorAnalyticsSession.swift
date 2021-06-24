@@ -9,47 +9,41 @@ struct PostEditorAnalyticsSession {
     var currentEditor: Editor
     var hasUnsupportedBlocks = false
     var outcome: Outcome? = nil
-    var template: String?
     private let startTime = DispatchTime.now().uptimeNanoseconds
 
-    init(editor: Editor, post: AbstractPost, template: String? = nil) {
+    init(editor: Editor, post: AbstractPost) {
         currentEditor = editor
         postType = post.analyticsPostType ?? "unsupported"
         blogType = post.blog.analyticsType.rawValue
         contentType = ContentType(post: post).rawValue
-        self.template = template
     }
 
-    mutating func start(unsupportedBlocks: [String] = []) {
+    mutating func start(unsupportedBlocks: [String] = [], canViewEditorOnboarding: Bool = false) {
         assert(!started, "An editor session was attempted to start more than once")
         hasUnsupportedBlocks = !unsupportedBlocks.isEmpty
 
-        let properties = startEventProperties(with: unsupportedBlocks)
+        let properties = startEventProperties(with: unsupportedBlocks, canViewEditorOnboarding: canViewEditorOnboarding)
 
         WPAppAnalytics.track(.editorSessionStart, withProperties: properties)
         started = true
     }
 
-    mutating func apply(template: String) {
-        self.template = template
-        WPAnalytics.track(.editorSessionTemplateApply, withProperties: commonProperties)
-    }
-
-    func preview(template: String) {
-        let properties = commonProperties.merging([ Property.template: template], uniquingKeysWith: { $1 })
-
-        WPAnalytics.track(.editorSessionTemplatePreview, withProperties: properties)
-    }
-
-    private func startEventProperties(with unsupportedBlocks: [String]) -> [String: Any] {
+    private func startEventProperties(with unsupportedBlocks: [String], canViewEditorOnboarding: Bool) -> [String: Any] {
         // On Android, we are tracking this in milliseconds, which seems like a good enough time scale
         // Let's make sure to round the value and send an integer for consistency
         let startupTimeNanoseconds = DispatchTime.now().uptimeNanoseconds - startTime
         let startupTimeMilliseconds = Int(Double(startupTimeNanoseconds) / 1_000_000)
-        return [
-            Property.startupTime: startupTimeMilliseconds,
-            Property.unsupportedBlocks: unsupportedBlocks
-        ].merging(commonProperties, uniquingKeysWith: { $1 })
+        var properties: [String: Any] = [ Property.startupTime: startupTimeMilliseconds ]
+
+        // Tracks custom event types can't be arrays so we need to convert this to JSON
+        if let data = try? JSONSerialization.data(withJSONObject: unsupportedBlocks, options: .fragmentsAllowed) {
+            let blocksJSON = String(data: data, encoding: .utf8)
+            properties[Property.unsupportedBlocks] = blocksJSON
+        }
+
+        properties[Property.canViewEditorOnboarding] = canViewEditorOnboarding
+
+        return properties.merging(commonProperties, uniquingKeysWith: { $1 })
     }
 
     mutating func `switch`(editor: Editor) {
@@ -70,9 +64,11 @@ struct PostEditorAnalyticsSession {
         }
     }
 
-    func end(outcome endOutcome: Outcome) {
+    func end(outcome endOutcome: Outcome, canViewEditorOnboarding: Bool = false) {
         let outcome = self.outcome ?? endOutcome
-        let properties = [ Property.outcome: outcome.rawValue].merging(commonProperties, uniquingKeysWith: { $1 })
+        var properties: [String: Any] = [ Property.outcome: outcome.rawValue ].merging(commonProperties, uniquingKeysWith: { $1 })
+
+        properties[Property.canViewEditorOnboarding] = canViewEditorOnboarding
 
         WPAppAnalytics.track(.editorSessionEnd, withProperties: properties)
     }
@@ -90,6 +86,7 @@ private extension PostEditorAnalyticsSession {
         static let sessionId = "session_id"
         static let template = "template"
         static let startupTime = "startup_time_ms"
+        static let canViewEditorOnboarding = "can_view_editor_onboarding"
     }
 
     var commonProperties: [String: String] {
@@ -100,7 +97,6 @@ private extension PostEditorAnalyticsSession {
             Property.blogType: blogType,
             Property.sessionId: sessionId,
             Property.hasUnsupportedBlocks: hasUnsupportedBlocks ? "1" : "0",
-            Property.template: template
         ].compactMapValues { $0 }
     }
 }
@@ -108,6 +104,7 @@ private extension PostEditorAnalyticsSession {
 extension PostEditorAnalyticsSession {
     enum Editor: String {
         case gutenberg
+        case stories
         case classic
         case html
     }

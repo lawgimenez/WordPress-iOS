@@ -1,4 +1,5 @@
 import UIKit
+import Gridicons
 
 class ReaderTabViewController: UIViewController {
 
@@ -9,6 +10,8 @@ class ReaderTabViewController: UIViewController {
     private lazy var readerTabView: ReaderTabView = {
         return makeReaderTabView(viewModel)
     }()
+
+    private let searchButton: SpotlightableButton = SpotlightableButton(type: .custom)
 
     init(viewModel: ReaderTabViewModel, readerTabViewFactory: @escaping (ReaderTabViewModel) -> ReaderTabView) {
         self.viewModel = viewModel
@@ -26,9 +29,10 @@ class ReaderTabViewController: UIViewController {
             guard let self = self else {
                 return
             }
-            self.viewModel.presentFilter(from: self, sourceView: fromView, completion: { [weak self] title in
+
+            self.viewModel.presentFilter(from: self, sourceView: fromView, completion: { [weak self] topic in
                 self?.dismiss(animated: true, completion: nil)
-                completion(title)
+                completion(topic)
             })
         }
 
@@ -49,9 +53,11 @@ class ReaderTabViewController: UIViewController {
 
         ReaderTracker.shared.start(.main)
 
-        if FeatureFlag.whatIsNew.enabled {
+        if AppConfiguration.showsWhatIsNew {
             WPTabBarController.sharedInstance()?.presentWhatIsNew(on: self)
         }
+
+        searchButton.shouldShowSpotlight = QuickStartTourGuide.shared.isCurrentElement(.readerSearch)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -69,15 +75,23 @@ class ReaderTabViewController: UIViewController {
         settingsButton.accessibilityIdentifier = ReaderTabConstants.settingsButtonIdentifier
 
         // Search Button
-        let searchButton = UIBarButtonItem(barButtonSystemItem: .search,
-                                           target: self,
-                                           action: #selector(didTapSearchButton))
+        searchButton.spotlightOffset = UIOffset(horizontal: 20, vertical: -10)
+        searchButton.setImage(.gridicon(.search), for: .normal)
+        searchButton.addTarget(self, action: #selector(didTapSearchButton), for: .touchUpInside)
         searchButton.accessibilityIdentifier = ReaderTabConstants.searchButtonAccessibilityIdentifier
-        navigationItem.rightBarButtonItems = [searchButton, settingsButton]
+
+        let searchBarButton = UIBarButtonItem(customView: searchButton)
+
+        navigationItem.rightBarButtonItems = [searchBarButton, settingsButton]
     }
 
     override func loadView() {
         view = readerTabView
+
+        if FeatureFlag.newNavBarAppearance.enabled {
+            navigationItem.largeTitleDisplayMode = .always
+            navigationController?.navigationBar.prefersLargeTitles = true
+        }
     }
 
     @objc func willEnterForeground() {

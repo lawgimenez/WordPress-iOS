@@ -58,6 +58,7 @@ import WordPressFlux
 
     private weak var noticeContainerView: NoticeContainerView?
     private let actions: [ActionSheetItem]
+    private let source: String
 
     /// Returns a newly initialized CreateButtonCoordinator
     /// - Parameters:
@@ -65,9 +66,10 @@ import WordPressFlux
     ///   - newPost: A closure to call when the New Post button is tapped.
     ///   - newPage: A closure to call when the New Page button is tapped.
     ///   - newStory: A closure to call when the New Story button is tapped. The New Story button is hidden when value is `nil`.
-    init(_ viewController: UIViewController, actions: [ActionSheetItem]) {
+    init(_ viewController: UIViewController, actions: [ActionSheetItem], source: String) {
         self.viewController = viewController
         self.actions = actions
+        self.source = source
 
         super.init()
 
@@ -112,6 +114,8 @@ import WordPressFlux
         button.addTarget(self, action: #selector(showCreateSheet), for: .touchUpInside)
     }
 
+    private var currentTourElement: QuickStartTourElement?
+
     @objc private func showCreateSheet() {
         didDismissTooltip = true
         hideNotice()
@@ -124,11 +128,18 @@ import WordPressFlux
             actions.first?.handler()
         } else {
             let actionSheetVC = actionSheetController(with: viewController.traitCollection)
-            viewController.present(actionSheetVC, animated: true, completion: {
-                WPAnalytics.track(.createSheetShown)
-                QuickStartTourGuide.find()?.visited(.newpost)
+            viewController.present(actionSheetVC, animated: true, completion: { [weak self] in
+                WPAnalytics.track(.createSheetShown, properties: ["source": self?.source ?? ""])
+
+                if let element = self?.currentTourElement {
+                    QuickStartTourGuide.shared.visited(element)
+                }
             })
         }
+    }
+
+    private func isShowingStoryOption() -> Bool {
+        actions.contains(where: { $0 is StoryAction })
     }
 
     private func actionSheetController(with traitCollection: UITraitCollection) -> UIViewController {
@@ -155,6 +166,11 @@ import WordPressFlux
         }
     }
 
+    func hideCreateButtonTooltip() {
+        didDismissTooltip = true
+        hideNotice()
+    }
+
     @objc func hideCreateButton() {
         hideNotice()
 
@@ -171,7 +187,7 @@ import WordPressFlux
         showCreateButton(notice: notice(for: blog))
     }
 
-    func showCreateButton(notice: Notice) {
+    private func showCreateButton(notice: Notice) {
         if !didDismissTooltip {
             noticeContainerView = noticeAnimator.present(notice: notice, in: viewController!.view, sourceView: button)
             shownTooltipCount += 1
@@ -199,16 +215,17 @@ import WordPressFlux
         return notice
     }
 
-    func listenForQuickStart() {
+    private func listenForQuickStart() {
         quickStartObserver = NotificationCenter.default.addObserver(forName: .QuickStartTourElementChangedNotification, object: nil, queue: nil) { [weak self] (notification) in
             guard let self = self,
                 let userInfo = notification.userInfo,
                 let element = userInfo[QuickStartTourGuide.notificationElementKey] as? QuickStartTourElement,
                 let description = userInfo[QuickStartTourGuide.notificationDescriptionKey] as? NSAttributedString,
-                element == .newpost else {
+                element == .newpost || element == .newPage else {
                     return
             }
 
+            self.currentTourElement = element
             self.hideNotice()
             self.didDismissTooltip = false
             self.showCreateButton(notice: self.quickStartNotice(description))

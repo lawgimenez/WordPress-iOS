@@ -164,18 +164,21 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
     }
 
     private lazy var createButtonCoordinator: CreateButtonCoordinator = {
-        return CreateButtonCoordinator(self, actions: [
+        var actions: [ActionSheetItem] = [
             PostAction(handler: { [weak self] in
                     self?.dismiss(animated: false, completion: nil)
                     self?.createPost()
-            }),
-            StoryAction(handler: { [weak self] in
+            }, source: Constants.source)
+        ]
+        if Feature.enabled(.stories) && blog.supports(.stories) {
+            actions.insert(StoryAction(handler: { [weak self] in
                 guard let self = self else {
                     return
                 }
-                (self.tabBarController as? WPTabBarController)?.showStoryEditor(blog: self.blog, title: nil, content: nil, source: "post_list")
-            })
-        ])
+                (self.tabBarController as? WPTabBarController)?.showStoryEditor(blog: self.blog, title: nil, content: nil)
+            }, source: Constants.source), at: 0)
+        }
+        return CreateButtonCoordinator(self, actions: actions, source: Constants.source)
     }()
 
     override func viewDidAppear(_ animated: Bool) {
@@ -249,6 +252,10 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         super.selectedFilterDidChange(filterBar)
     }
 
+    override func refresh(_ sender: AnyObject) {
+        updateGhostableTableViewOptions()
+        super.refresh(sender)
+    }
 
     /// Update the `GhostOptions` to correctly show compact or default cells
     private func updateGhostableTableViewOptions() {
@@ -319,7 +326,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
 
         searchWrapperView.addSubview(searchController.searchBar)
 
-        tableView.scrollIndicatorInsets.top = searchController.searchBar.bounds.height
+        tableView.verticalScrollIndicatorInsets.top = searchController.searchBar.bounds.height
 
         updateTableHeaderSize()
     }
@@ -540,7 +547,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
             return
         }
 
-        cell.isAuthorHidden = showingJustMyPosts
+        cell.shouldHideAuthor = showingJustMyPosts
     }
 
     private func configureRestoreCell(_ cell: UITableViewCell) {
@@ -570,6 +577,14 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         }
 
         PostListEditorPresenter.handle(post: post, in: self)
+    }
+
+    private func editDuplicatePost(apost: AbstractPost) {
+        guard let post = apost as? Post else {
+            return
+        }
+
+        PostListEditorPresenter.handleCopy(post: post, in: self)
     }
 
     func presentAlertForPostBeingUploaded() {
@@ -619,8 +634,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
             return
         }
 
-        let service = BlogService(managedObjectContext: ContextManager.sharedInstance().mainContext)
-        SiteStatsInformation.sharedInstance.siteTimeZone = service.timeZone(for: blog)
+        SiteStatsInformation.sharedInstance.siteTimeZone = blog.timeZone
         SiteStatsInformation.sharedInstance.oauth2Token = blog.authToken
         SiteStatsInformation.sharedInstance.siteID = blog.dotComID
 
@@ -644,6 +658,10 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         ReachabilityUtils.onAvailableInternetConnectionDo {
             viewStatsForPost(post)
         }
+    }
+
+    func duplicate(_ post: AbstractPost) {
+        editDuplicatePost(apost: post)
     }
 
     func publish(_ post: AbstractPost) {
@@ -734,7 +752,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         updateTableHeaderSize()
         _tableViewHandler.isSearching = true
 
-        tableView.scrollIndicatorInsets.top = searchWrapperView.bounds.height
+        tableView.verticalScrollIndicatorInsets.top = searchWrapperView.bounds.height
         tableView.contentInset.top = 0
     }
 
@@ -777,6 +795,7 @@ class PostListViewController: AbstractPostListViewController, UIViewControllerRe
         static let searchHeaderHeight: CGFloat = 40
         static let card = "card"
         static let compact = "compact"
+        static let source = "post_list"
     }
 }
 

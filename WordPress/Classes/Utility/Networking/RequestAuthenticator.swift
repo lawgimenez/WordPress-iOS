@@ -16,6 +16,7 @@ class RequestAuthenticator: NSObject {
 
     enum DotComAuthenticationType {
         case regular
+        case regularMapped(siteID: Int)
         case atomic(loginURL: String)
         case privateAtomic(blogID: Int)
     }
@@ -44,20 +45,15 @@ class RequestAuthenticator: NSObject {
                 return nil
         }
 
-        let authenticationType: DotComAuthenticationType
+        var authenticationType: DotComAuthenticationType = .regular
 
-        if let blog = blog,
-            blog.isAtomic() {
+        if let blog = blog, let dotComID = blog.dotComID as? Int {
 
-            guard let blogID = blog.dotComID as? Int else {
-                CrashLogging.logError(Error.atomicSiteWithoutDotComID(blog: blog))
-                return nil
+            if blog.isAtomic() {
+                authenticationType = blog.isPrivate() ? .privateAtomic(blogID: dotComID) : .atomic(loginURL: blog.loginUrl())
+            } else if blog.hasMappedDomain() {
+                authenticationType = .regularMapped(siteID: dotComID)
             }
-            let logingUrl = blog.loginUrl()
-
-            authenticationType = blog.isPrivate() ? .privateAtomic(blogID: blogID) : .atomic(loginURL: logingUrl)
-        } else {
-            authenticationType = .regular
         }
 
         self.init(credentials: .dotCom(username: username, authToken: token, authenticationType: authenticationType))
@@ -122,6 +118,14 @@ class RequestAuthenticator: NSObject {
                 username: username,
                 authToken: authToken,
                 completion: completion)
+        case .regularMapped(let siteID):
+            requestForMappedWPCom(url: url,
+                cookieJar: cookieJar,
+                username: username,
+                authToken: authToken,
+                siteID: siteID,
+                completion: completion)
+
         case .privateAtomic(let siteID):
             requestForPrivateAtomicWPCom(
                 url: url,
@@ -149,9 +153,9 @@ class RequestAuthenticator: NSObject {
 
         authenticationService.loadAuthCookiesForSelfHosted(into: cookieJar, loginURL: loginURL, username: username, password: password, success: {
             done()
-        }) { error in
+        }) { [weak self] error in
             // Make sure this error scenario isn't silently ignored.
-            CrashLogging.logError(error)
+            self?.logErrorIfNeeded(error)
 
             // Even if getting the auth cookies fail, we'll still try to load the URL
             // so that the user sees a reasonable error situation on screen.
@@ -172,16 +176,16 @@ class RequestAuthenticator: NSObject {
         // a context at all...
         guard let account = AccountService(managedObjectContext: ContextManager.sharedInstance().mainContext).defaultWordPressComAccount() else {
 
-            CrashLogging.logMessage("It shouldn't be possible to reach this point without an account.", properties: nil, level: .error)
+            WordPressAppDelegate.crashLogging?.logMessage("It shouldn't be possible to reach this point without an account.", properties: nil, level: .error)
             return
         }
         let authenticationService = AtomicAuthenticationService(account: account)
 
         authenticationService.loadAuthCookies(into: cookieJar, username: username, siteID: siteID, success: {
             done()
-        }) { error in
+        }) { [weak self] error in
             // Make sure this error scenario isn't silently ignored.
-            CrashLogging.logError(error)
+            self?.logErrorIfNeeded(error)
 
             // Even if getting the auth cookies fail, we'll still try to load the URL
             // so that the user sees a reasonable error situation on screen.
@@ -209,9 +213,55 @@ class RequestAuthenticator: NSObject {
 
         authenticationService.loadAuthCookiesForWPCom(into: cookieJar, username: username, authToken: authToken, success: {
             done()
-        }) { error in
+        }) { [weak self] error in
             // Make sure this error scenario isn't silently ignored.
-            CrashLogging.logError(error)
+            self?.logErrorIfNeeded(error)
+
+            // Even if getting the auth cookies fail, we'll still try to load the URL
+            // so that the user sees a reasonable error situation on screen.
+            // We could opt to create a special screen but for now I'd rather users report
+            // the issue when it happens.
+            done()
+        }
+    }
+
+    private func requestForMappedWPCom(url: URL, cookieJar: CookieJar, username: String, authToken: String, siteID: Int, completion: @escaping (URLRequest) -> Void) {
+        func done() {
+            guard
+                let host = url.host,
+                !host.contains(WPComDomain)
+            else {
+                // The requested URL is to the unmapped version of the domain,
+                // so skip proxying the request through r-login.
+                completion(URLRequest(url: url))
+                return
+            }
+
+            let rlogin = "https://r-login.wordpress.com/remote-login.php?action=auth"
+            guard var components = URLComponents(string: rlogin) else {
+                // Safety net in case something unexpected changes in the future.
+                DDLogError("There was an unexpected problem initializing URLComponents via the rlogin string.")
+                completion(URLRequest(url: url))
+                return
+            }
+            var queryItems = components.queryItems ?? []
+            queryItems.append(contentsOf: [
+                URLQueryItem(name: "host", value: host),
+                URLQueryItem(name: "id", value: String(siteID)),
+                URLQueryItem(name: "back", value: url.absoluteString)
+            ])
+            components.queryItems = queryItems
+            let requestURL = components.url ?? url
+
+            let request = URLRequest(url: requestURL)
+            completion(request)
+        }
+
+        authenticationService.loadAuthCookiesForWPCom(into: cookieJar, username: username, authToken: authToken, success: {
+            done()
+        }) { [weak self] error in
+            // Make sure this error scenario isn't silently ignored.
+            self?.logErrorIfNeeded(error)
 
             // Even if getting the auth cookies fail, we'll still try to load the URL
             // so that the user sees a reasonable error situation on screen.
@@ -230,15 +280,26 @@ class RequestAuthenticator: NSObject {
 
         authenticationService.loadAuthCookiesForWPCom(into: cookieJar, username: username, authToken: authToken, success: {
             done()
-        }) { error in
+        }) { [weak self] error in
             // Make sure this error scenario isn't silently ignored.
-            CrashLogging.logError(error)
+            self?.logErrorIfNeeded(error)
 
             // Even if getting the auth cookies fail, we'll still try to load the URL
             // so that the user sees a reasonable error situation on screen.
             // We could opt to create a special screen but for now I'd rather users report
             // the issue when it happens.
             done()
+        }
+    }
+
+    private func logErrorIfNeeded(_ error: Swift.Error) {
+        let nsError = error as NSError
+
+        switch nsError.code {
+        case NSURLErrorTimedOut, NSURLErrorNotConnectedToInternet:
+            return
+        default:
+            WordPressAppDelegate.crashLogging?.logError(error)
         }
     }
 }

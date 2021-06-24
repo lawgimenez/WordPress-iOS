@@ -22,12 +22,33 @@ class ReaderCardsStreamViewController: ReaderStreamViewController {
     /// This is set to true after the Reader Manage view is dismissed
     private var shouldForceRefresh = false
 
-    private var selectInterestsViewController: ReaderSelectInterestsViewController = ReaderSelectInterestsViewController()
+    private lazy var selectInterestsViewController: ReaderSelectInterestsViewController = {
+        let title = NSLocalizedString("Discover and follow blogs you love", comment: "Reader select interests title label text")
+        let subtitle = NSLocalizedString("Choose your topics", comment: "Reader select interests subtitle label text")
+        let buttonTitleEnabled = NSLocalizedString("Done", comment: "Reader select interests next button enabled title text")
+        let buttonTitleDisabled = NSLocalizedString("Select a few to continue", comment: "Reader select interests next button disabled title text")
+        let loading = NSLocalizedString("Finding blogs and stories you’ll love...", comment: "Label displayed to the user while loading their selected interests")
+
+        let configuration = ReaderSelectInterestsConfiguration(
+            title: title,
+            subtitle: subtitle,
+            buttonTitle: (enabled: buttonTitleEnabled, disabled: buttonTitleDisabled),
+            loading: loading
+        )
+
+        return ReaderSelectInterestsViewController(configuration: configuration)
+    }()
+
+    /// Whether the current view controller is visible
+    private var isVisible: Bool {
+        return isViewLoaded && view.window != nil
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         ReaderWelcomeBanner.displayIfNeeded(in: tableView)
-        tableView.register(ReaderTopicsCardCell.self, forCellReuseIdentifier: readerCardTopicsIdentifier)
+
+        tableView.register(ReaderTopicsCardCell.defaultNib, forCellReuseIdentifier: readerCardTopicsIdentifier)
         tableView.register(ReaderSitesCardCell.self, forCellReuseIdentifier: readerCardSitesIdentifier)
 
         addObservers()
@@ -47,7 +68,10 @@ class ReaderCardsStreamViewController: ReaderStreamViewController {
 
         switch card.type {
         case .post:
-            return cell(for: card.post!, at: indexPath)
+            guard let post = card.post else {
+                return UITableViewCell()
+            }
+            return cell(for: post, at: indexPath)
         case .topics:
             return cell(for: card.topicsArray)
         case .sites:
@@ -99,14 +123,20 @@ class ReaderCardsStreamViewController: ReaderStreamViewController {
         page = 1
         refreshCount += 1
 
-        cardsService.fetch(isFirstPage: true, refreshCount: refreshCount, success: success, failure: failure)
+        cardsService.fetch(isFirstPage: true, refreshCount: refreshCount, success: { [weak self] cardsCount, hasMore in
+            self?.trackContentPresented()
+            success(cardsCount, hasMore)
+        }, failure: { [weak self] error in
+            self?.trackContentPresented()
+            failure(error)
+        })
     }
 
     override func loadMoreItems(_ success: ((Bool) -> Void)?, failure: ((NSError) -> Void)?) {
         footerView.showSpinner(true)
 
         page += 1
-        WPAnalytics.track(.readerDiscoverPaginated, properties: ["page": page])
+        WPAnalytics.trackReader(.readerDiscoverPaginated, properties: ["page": page])
 
         cardsService.fetch(isFirstPage: false, success: { _, hasMore in
             success?(hasMore)
@@ -127,6 +157,19 @@ class ReaderCardsStreamViewController: ReaderStreamViewController {
         // Only sync if the tableview is at the top, otherwise this will change tableview's offset
         if isTableViewAtTheTop() {
             super.syncIfAppropriate(forceSync: forceSync)
+        }
+    }
+
+    /// Track when the API returned the cards and the user is still on the screen
+    /// This is used to create a funnel to check if users are leaving the screen
+    /// before the API response
+    private func trackContentPresented() {
+        DispatchQueue.main.async {
+            guard self.isVisible else {
+                return
+            }
+
+            WPAnalytics.track(.readerDiscoverContentPresented)
         }
     }
 
@@ -157,22 +200,38 @@ class ReaderCardsStreamViewController: ReaderStreamViewController {
     }
 
     private func addObservers() {
-        // Observe the managedObjectContext for changes (likes, saves) and reload the tableView
-        NotificationCenter.default.addObserver(self,
-                                               selector: #selector(reload(_:)),
-                                               name: .NSManagedObjectContextDidSave,
-                                               object: managedObjectContext())
 
         // Listens for when the reader manage view controller is dismissed
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(manageControllerWasDismissed(_:)),
                                                name: .readerManageControllerWasDismissed,
                                                object: nil)
+
+        // Listens for when a site is blocked
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(siteBlocked(_:)),
+                                               name: .ReaderSiteBlocked,
+                                               object: nil)
     }
 
-    @objc func manageControllerWasDismissed(_ notification: Foundation.Notification) {
+    @objc private func manageControllerWasDismissed(_ notification: Foundation.Notification) {
         shouldForceRefresh = true
         self.displaySelectInterestsIfNeeded()
+    }
+
+    /// Update the post card when a site is blocked from post details.
+    ///
+    @objc private func siteBlocked(_ notification: Foundation.Notification) {
+        guard let userInfo = notification.userInfo,
+              let post = userInfo[ReaderNotificationKeys.post] as? ReaderPost,
+              let posts = content.content as? [ReaderCard], // let posts = cards
+              let contentPost = posts.first(where: { $0.post?.postID == post.postID }),
+              let indexPath = content.indexPath(forObject: contentPost) else {
+            return
+        }
+
+        super.syncIfAppropriate(forceSync: true)
+        tableView.reloadRows(at: [indexPath], with: UITableView.RowAnimation.fade)
     }
 }
 
@@ -231,14 +290,14 @@ private extension ReaderCardsStreamViewController {
 extension ReaderCardsStreamViewController: ReaderTopicsTableCardCellDelegate {
     func didSelect(topic: ReaderAbstractTopic) {
         if topic as? ReaderTagTopic != nil {
-            WPAnalytics.track(.readerDiscoverTopicTapped)
+            WPAnalytics.trackReader(.readerDiscoverTopicTapped)
 
             let topicStreamViewController = ReaderStreamViewController.controllerWithTopic(topic)
             navigationController?.pushViewController(topicStreamViewController, animated: true)
         } else if let siteTopic = topic as? ReaderSiteTopic {
             var properties = [String: Any]()
             properties[WPAppAnalyticsKeyBlogID] = siteTopic.siteID
-            WPAnalytics.track(.readerSuggestedSiteVisited, properties: properties)
+            WPAnalytics.trackReader(.readerSuggestedSiteVisited, properties: properties)
 
             let topicStreamViewController = ReaderStreamViewController.controllerWithSiteID(siteTopic.siteID, isFeed: false)
             navigationController?.pushViewController(topicStreamViewController, animated: true)

@@ -26,6 +26,10 @@ class ReaderDetailHeaderView: UIStackView, NibLoadable {
     @IBOutlet weak var collectionViewPaddingView: UIView!
     @IBOutlet weak var topicsCollectionView: TopicsCollectionView!
 
+    /// Temporary work around until white headers are shipped app-wide,
+    /// allowing Reader Detail to use a blue navbar.
+    var useCompatibilityMode: Bool = false
+
     /// The post to show details in the header
     ///
     private var post: ReaderPost?
@@ -166,14 +170,14 @@ class ReaderDetailHeaderView: UIStackView, NibLoadable {
     }
 
     private func configureDateLabel() {
-        dateLabel.text = post?.dateForDisplay()?.mediumString()
+        dateLabel.text = post?.dateForDisplay()?.toMediumString()
     }
 
     private func configureFollowButton() {
         followButton.isSelected = post?.isFollowing() ?? false
         iPadFollowButton.isSelected = post?.isFollowing() ?? false
 
-        followButton.setImage(UIImage.gridicon(.readerFollow, size: CGSize(width: 24, height: 24)).imageWithTintColor(.accent), for: .normal)
+        followButton.setImage(UIImage.gridicon(.readerFollow, size: CGSize(width: 24, height: 24)).imageWithTintColor(.primary), for: .normal)
         followButton.setImage(UIImage.gridicon(.readerFollowing, size: CGSize(width: 24, height: 24)).imageWithTintColor(.gray(.shade20)), for: .selected)
         WPStyleGuide.applyReaderFollowButtonStyle(iPadFollowButton)
 
@@ -197,7 +201,7 @@ class ReaderDetailHeaderView: UIStackView, NibLoadable {
             return
         }
 
-        let featuredImageIsDisplayed = ReaderDetailFeaturedImageView.shouldDisplayFeaturedImage(with: post)
+        let featuredImageIsDisplayed = useCompatibilityMode || ReaderDetailFeaturedImageView.shouldDisplayFeaturedImage(with: post)
         collectionViewPaddingView.isHidden = !featuredImageIsDisplayed
 
         topicsCollectionView.topicDelegate = self
@@ -236,7 +240,7 @@ class ReaderDetailHeaderView: UIStackView, NibLoadable {
                 return nil
         }
 
-        guard let postedOn = post.dateCreated?.mediumString() else {
+        guard let postedOn = post.dateCreated?.toMediumString() else {
             let format = NSLocalizedString("Posted in %@, at %@, by %@.", comment: "Accessibility label for the blog name in the Reader's post details, without date. Placeholders are blog title, blog URL, author name")
             return String(format: format, postedIn, postedAtURL, postedBy)
         }
@@ -252,7 +256,7 @@ class ReaderDetailHeaderView: UIStackView, NibLoadable {
         isAccessibilityElement = false
 
         titleLabel.accessibilityLabel = title
-        titleLabel.accessibilityTraits = .staticText
+        titleLabel.accessibilityTraits = .header
     }
 
 }

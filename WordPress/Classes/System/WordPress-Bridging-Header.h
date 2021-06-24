@@ -7,7 +7,6 @@
 #import "ActivityLogViewController.h"
 #import "AbstractPost+HashHelpers.h"
 #import "AccountService.h"
-#import "ApiCredentials.h"
 
 #import "Blog.h"
 #import "BlogService.h"
@@ -15,6 +14,7 @@
 #import "BlogSelectorViewController.h"
 #import "BlogListViewController.h"
 #import "BlogDetailsViewController.h"
+#import "BlogSiteVisibilityHelper.h"
 
 #import "Comment.h"
 #import "CommentService.h"

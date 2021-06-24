@@ -114,7 +114,7 @@ class MediaItemViewController: UITableViewController {
         default: break
         }
 
-        rows.append(TextRow(title: NSLocalizedString("Uploaded", comment: "Label for the date a media asset (image / video) was uploaded"), value: media.creationDate?.mediumString() ?? ""))
+        rows.append(TextRow(title: NSLocalizedString("Uploaded", comment: "Label for the date a media asset (image / video) was uploaded"), value: media.creationDate?.toMediumString() ?? ""))
 
         return rows
     }
@@ -155,11 +155,13 @@ class MediaItemViewController: UITableViewController {
                                             style: .plain,
                                             target: self,
                                             action: #selector(shareTapped(_:)))
+            shareItem.accessibilityLabel = NSLocalizedString("Share", comment: "Accessibility label for share buttons in nav bars")
 
             let trashItem = UIBarButtonItem(image: .gridicon(.trash),
                                             style: .plain,
                                             target: self,
                                             action: #selector(trashTapped(_:)))
+            trashItem.accessibilityLabel = NSLocalizedString("Trash", comment: "Accessibility label for trash buttons in nav bars")
 
             if media.blog.supports(.mediaDeletion) {
                 navigationItem.rightBarButtonItems = [ shareItem, trashItem ]

@@ -70,7 +70,7 @@ class PluginDirectoryViewController: UITableViewController {
 
         containerView.addSubview(searchController.searchBar)
         tableView.tableHeaderView = containerView
-        tableView.scrollIndicatorInsets.top = searchController.searchBar.bounds.height
+        tableView.verticalScrollIndicatorInsets.top = searchController.searchBar.bounds.height
         // for some... particlar reason, which I haven't been able to fully track down, if the searchBar is added directly
         // as the tableHeaderView, the UITableView sort of freaks out and adds like 400pts of random padding
         // below the content of the tableView. Wrapping it in this container fixes it ¯\_(ツ)_/¯
@@ -83,7 +83,6 @@ class PluginDirectoryViewController: UITableViewController {
 
         let controller = UISearchController(searchResultsController: resultsController)
         controller.obscuresBackgroundDuringPresentation = false
-        controller.dimsBackgroundDuringPresentation = false
         controller.searchResultsUpdater = self
         controller.delegate = self
 
@@ -153,7 +152,7 @@ extension PluginDirectoryViewController: UISearchControllerDelegate {
             searchController.searchBar.becomeFirstResponder()
         }
         updateTableHeaderSize()
-        tableView.scrollIndicatorInsets.top = searchWrapperView.bounds.height
+        tableView.verticalScrollIndicatorInsets.top = searchWrapperView.bounds.height
         tableView.contentInset.top = 0
     }
 
@@ -225,7 +224,9 @@ extension PluginDirectoryViewController: PluginListPresenter {
 
         if let listType = listType {
             let properties = ["type": listType]
-            WPAppAnalytics.track(.openedPluginList, withProperties: properties, withBlogID: site.siteID as NSNumber)
+            let siteID: NSNumber? = (site.isSelfHostedWithoutJetpack ? nil : site.siteID) as NSNumber?
+
+            WPAppAnalytics.track(.openedPluginList, withProperties: properties, withBlogID: siteID)
         }
 
         let listVC = PluginListViewController(site: site, query: query)

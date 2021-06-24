@@ -13,8 +13,27 @@ class ReaderDetailCoordinator {
         }
     }
 
+    /// Used to determine if block and report are shown in the options menu.
+    var readerTopic: ReaderAbstractTopic?
+
+    /// Used for analytics
+    var remoteSimplePost: RemoteReaderSimplePost?
+
     /// A post URL to be loaded and be displayed
     var postURL: URL?
+
+    /// A comment ID used to navigate to a comment
+    var commentID: Int? {
+        // Comment fragments have the form #comment-50484
+        // If one is present, we'll extract the ID and return it.
+        if let fragment = postURL?.fragment,
+           fragment.hasPrefix("comment-"),
+           let idString = fragment.components(separatedBy: "comment-").last {
+            return Int(idString)
+        }
+
+        return nil
+    }
 
     /// Called if the view controller's post fails to load
     var postLoadFailureBlock: (() -> Void)? = nil
@@ -33,10 +52,13 @@ class ReaderDetailCoordinator {
     private let coreDataStack: CoreDataStack
 
     /// Reader Post Service
-    private let service: ReaderPostService
+    private let readerPostService: ReaderPostService
 
     /// Reader Topic Service
     private let topicService: ReaderTopicService
+
+    /// Post Service
+    private let postService: PostService
 
     /// Post Sharing Controller
     private let sharingController: PostSharingController
@@ -70,18 +92,24 @@ class ReaderDetailCoordinator {
         return URL(string: postURLString)
     }
 
+    /// The total number of Likes for the post.
+    /// Passed to ReaderDetailLikesListController to display in the view title.
+    private var totalLikes = 0
+
     /// Initialize the Reader Detail Coordinator
     ///
     /// - Parameter service: a Reader Post Service
     init(coreDataStack: CoreDataStack = ContextManager.shared,
-         service: ReaderPostService = ReaderPostService(managedObjectContext: ContextManager.sharedInstance().mainContext),
+         readerPostService: ReaderPostService = ReaderPostService(managedObjectContext: ContextManager.sharedInstance().mainContext),
          topicService: ReaderTopicService = ReaderTopicService(managedObjectContext: ContextManager.sharedInstance().mainContext),
+         postService: PostService = PostService(managedObjectContext: ContextManager.sharedInstance().mainContext),
          sharingController: PostSharingController = PostSharingController(),
          readerLinkRouter: UniversalLinkRouter = UniversalLinkRouter(routes: UniversalLinkRouter.readerRoutes),
          view: ReaderDetailView) {
         self.coreDataStack = coreDataStack
-        self.service = service
+        self.readerPostService = readerPostService
         self.topicService = topicService
+        self.postService = postService
         self.sharingController = sharingController
         self.readerLinkRouter = readerLinkRouter
         self.view = view
@@ -91,7 +119,7 @@ class ReaderDetailCoordinator {
         postInUse(false)
     }
 
-    /// Start the cordinator
+    /// Start the coordinator
     ///
     func start() {
         view?.showLoading()
@@ -105,6 +133,37 @@ class ReaderDetailCoordinator {
         }
     }
 
+    /// Fetch related posts for the current post
+    ///
+    func fetchRelatedPosts(for post: ReaderPost) {
+        readerPostService.fetchRelatedPosts(for: post) { [weak self] relatedPosts in
+            self?.view?.renderRelatedPosts(relatedPosts)
+        } failure: { error in
+            DDLogError("Error fetching related posts for detail: \(String(describing: error?.localizedDescription))")
+        }
+    }
+
+    /// Fetch Likes for the current post.
+    /// Returns `ReaderDetailLikesView.maxAvatarsDisplayed` number of Likes.
+    ///
+    func fetchLikes(for post: ReaderPost) {
+        guard let postID = post.postID else {
+            return
+        }
+
+        // Fetch a full page of Likes but only return the `maxAvatarsDisplayed` number.
+        // That way the first page will already be cached if the user displays the full Likes list.
+        postService.getLikesFor(postID: postID,
+                                siteID: post.siteID,
+                                success: { [weak self] users, totalLikes in
+                                    self?.totalLikes = totalLikes
+                                    self?.view?.updateLikes(users: Array(users.prefix(ReaderDetailLikesView.maxAvatarsDisplayed)), totalLikes: totalLikes)
+                                }, failure: { [weak self] error in
+                                    self?.view?.updateLikes(users: [LikeUser](), totalLikes: 0)
+                                    DDLogError("Error fetching Likes for post detail: \(String(describing: error?.localizedDescription))")
+                                })
+    }
+
     /// Share the current post
     ///
     func share(fromView anchorView: UIView) {
@@ -114,7 +173,7 @@ class ReaderDetailCoordinator {
 
         sharingController.shareReaderPost(post, fromView: anchorView, inViewController: view)
 
-        WPAnalytics.track(.readerSharedItem)
+        WPAnalytics.trackReader(.readerSharedItem)
     }
 
     /// Set a postID, siteID and isFeed
@@ -168,14 +227,21 @@ class ReaderDetailCoordinator {
     /// Open the postURL in a separated view controller
     ///
     func openInBrowser() {
-        guard
-            let permaLink = post?.permaLink,
-            let postURL = URL(string: permaLink)
-        else {
+
+        let url: URL? = {
+            // For Reader posts, use post link.
+            if let permaLink = post?.permaLink {
+                return URL(string: permaLink)
+            }
+            // For Related posts, use postURL.
+            return postURL
+        }()
+
+        guard let postURL = url else {
             return
         }
 
-        WPAnalytics.track(.readerArticleVisited)
+        WPAnalytics.trackReader(.readerArticleVisited)
         presentWebViewController(postURL)
     }
 
@@ -203,16 +269,16 @@ class ReaderDetailCoordinator {
     /// - Parameter siteID: a site identification
     /// - Parameter isFeed: a Boolean indicating if the site is an external feed (not hosted at WPcom and not using Jetpack)
     private func fetch(postID: NSNumber, siteID: NSNumber, isFeed: Bool) {
-        service.fetchPost(postID.uintValue,
-                          forSite: siteID.uintValue,
-                          isFeed: isFeed,
-                          success: { [weak self] post in
-                            self?.post = post
-                            self?.renderPostAndBumpStats()
-        }, failure: { [weak self] _ in
-            self?.postURL == nil ? self?.view?.showError() : self?.view?.showErrorWithWebAction()
-            self?.reportPostLoadFailure()
-        })
+        readerPostService.fetchPost(postID.uintValue,
+                                    forSite: siteID.uintValue,
+                                    isFeed: isFeed,
+                                    success: { [weak self] post in
+                                        self?.post = post
+                                        self?.renderPostAndBumpStats()
+                                    }, failure: { [weak self] _ in
+                                        self?.postURL == nil ? self?.view?.showError() : self?.view?.showErrorWithWebAction()
+                                        self?.reportPostLoadFailure()
+                                    })
     }
 
 
@@ -221,15 +287,15 @@ class ReaderDetailCoordinator {
     /// Use this method to fetch a ReaderPost from a URL.
     /// - Parameter url: a post URL
     private func fetch(_ url: URL) {
-        service.fetchPost(at: url,
-                          success: { [weak self] post in
-                            self?.post = post
-                            self?.renderPostAndBumpStats()
-        }, failure: { [weak self] error in
-            DDLogError("Error fetching post for detail: \(String(describing: error?.localizedDescription))")
-            self?.postURL == nil ? self?.view?.showError() : self?.view?.showErrorWithWebAction()
-            self?.reportPostLoadFailure()
-        })
+        readerPostService.fetchPost(at: url,
+                                    success: { [weak self] post in
+                                        self?.post = post
+                                        self?.renderPostAndBumpStats()
+                                    }, failure: { [weak self] error in
+                                        DDLogError("Error fetching post for detail: \(String(describing: error?.localizedDescription))")
+                                        self?.postURL == nil ? self?.view?.showError() : self?.view?.showErrorWithWebAction()
+                                        self?.reportPostLoadFailure()
+                                    })
     }
 
     private func renderPostAndBumpStats() {
@@ -241,6 +307,22 @@ class ReaderDetailCoordinator {
 
         bumpStats()
         bumpPageViewsForPost()
+        markPostAsSeen()
+    }
+
+    private func markPostAsSeen() {
+        guard let post = post,
+              let context = post.managedObjectContext,
+              !post.isSeen else {
+            return
+        }
+
+        let postService = ReaderPostService(managedObjectContext: context)
+        postService.toggleSeen(for: post, success: {
+            NotificationCenter.default.post(name: .ReaderPostSeenToggled,
+                                            object: nil,
+                                            userInfo: [ReaderNotificationKeys.post: post])
+        }, failure: nil)
     }
 
     /// If the loaded URL contains a hash/anchor then jump to that spot in the post content
@@ -271,23 +353,23 @@ class ReaderDetailCoordinator {
         WPAppAnalytics.track(.readerSitePreviewed, withProperties: properties)
     }
 
-    /// Show a menu with options forthe current post's site
+    /// Show a menu with options for the current post's site
     ///
     private func showMenu(_ anchorView: UIView) {
         guard let post = post,
-            let context = post.managedObjectContext else {
+            let context = post.managedObjectContext,
+            let viewController = viewController else {
             return
         }
 
-        guard post.isFollowing else {
-            ReaderPostMenu.showMenuForPost(post, fromView: anchorView, inViewController: viewController)
-            return
-        }
+        ReaderMenuAction(logged: ReaderHelpers.isLoggedIn()).execute(post: post,
+                                                                     context: context,
+                                                                     readerTopic: readerTopic,
+                                                                     anchor: anchorView,
+                                                                     vc: viewController,
+                                                                     source: ReaderPostMenuSource.details)
 
-        let service: ReaderTopicService = ReaderTopicService(managedObjectContext: context)
-        let siteTopic: ReaderSiteTopic? = service.findSiteTopic(withSiteID: post.siteID)
-
-        ReaderPostMenu.showMenuForPost(post, topic: siteTopic, fromView: anchorView, inViewController: viewController)
+        WPAnalytics.trackReader(.readerArticleDetailMoreTapped)
     }
 
     private func showTopic(_ topic: String) {
@@ -295,7 +377,7 @@ class ReaderDetailCoordinator {
         viewController?.navigationController?.pushViewController(controller, animated: true)
     }
 
-    /// Show a list with posts contianing this tag
+    /// Show a list with posts containing this tag
     ///
     private func showTag() {
         guard let post = post else {
@@ -312,9 +394,10 @@ class ReaderDetailCoordinator {
     /// Given a URL presents it the best way possible.
     ///
     /// If it's an image, shows it fullscreen.
-    /// If it's a fullscreen Story link, open it in the webview controller
+    /// If it's a fullscreen Story link, open it in the webview controller.
     /// If it's a post, open a new detail screen.
-    /// If it's a regular URL, open it in the webview controller
+    /// If it's a link protocol (tel: / sms: / mailto:), take the correct action.
+    /// If it's a regular URL, open it in the webview controller.
     ///
     /// - Parameter url: the URL to be handled
     func handle(_ url: URL) {
@@ -331,9 +414,11 @@ class ReaderDetailCoordinator {
         } else if url.query?.contains("wp-story") ?? false {
             presentWebViewController(url)
         } else if readerLinkRouter.canHandle(url: url) {
-            readerLinkRouter.handle(url: url, shouldTrack: false, source: viewController)
+            readerLinkRouter.handle(url: url, shouldTrack: false, source: .inApp(presenter: viewController))
         } else if url.isWordPressDotComPost {
             presentReaderDetail(url)
+        } else if url.isLinkProtocol {
+            readerLinkRouter.handle(url: url, shouldTrack: false, source: .inApp(presenter: viewController))
         } else {
             presentWebViewController(url)
         }
@@ -374,9 +459,11 @@ class ReaderDetailCoordinator {
         ReaderFollowAction().execute(with: post,
                                      context: coreDataStack.mainContext,
                                      completion: { [weak self] in
+                                        ReaderHelpers.dispatchToggleFollowSiteMessage(post: post, success: true)
                                          self?.view?.updateHeader()
                                      },
-                                     failure: { [weak self] in
+                                     failure: { [weak self] _ in
+                                        ReaderHelpers.dispatchToggleFollowSiteMessage(post: post, success: false)
                                          self?.view?.updateHeader()
                                      })
     }
@@ -402,7 +489,7 @@ class ReaderDetailCoordinator {
         configuration.authenticateWithDefaultAccount()
         configuration.addsWPComReferrer = true
         let controller = WebViewControllerFactory.controller(configuration: configuration)
-        let navController = UINavigationController(rootViewController: controller)
+        let navController = LightNavigationController(rootViewController: controller)
         viewController?.present(navController, animated: true)
     }
 
@@ -422,6 +509,15 @@ class ReaderDetailCoordinator {
 
         post?.inUse = inUse
         coreDataStack.save(context)
+    }
+
+    private func showLikesList() {
+        guard let post = post else {
+            return
+        }
+
+        let controller = ReaderDetailLikesListController(post: post, totalLikes: totalLikes)
+        viewController?.navigationController?.pushViewController(controller, animated: true)
     }
 
     /// Index the post in Spotlight
@@ -449,6 +545,21 @@ class ReaderDetailCoordinator {
         var properties = ReaderHelpers.statsPropertiesForPost(readerPost, andValue: nil, forKey: nil)
         properties[DetailAnalyticsConstants.TypeKey] = detailType
         properties[DetailAnalyticsConstants.OfflineKey] = isOfflineView
+
+
+        // Track related post tapped
+        if let simplePost = remoteSimplePost {
+            switch simplePost.postType {
+                case .local:
+                    WPAnalytics.track(.readerRelatedPostFromSameSiteClicked, properties: properties)
+                case .global:
+                    WPAnalytics.track(.readerRelatedPostFromOtherSiteClicked, properties: properties)
+                default:
+                    DDLogError("Unknown related post type: \(String(describing: simplePost.postType))")
+            }
+        }
+
+        // Track open
         WPAppAnalytics.track(.readerArticleOpened, withProperties: properties)
 
         if let railcar = readerPost.railcarDictionary() {
@@ -456,7 +567,7 @@ class ReaderDetailCoordinator {
         }
     }
 
-    /// Bum post page view
+    /// Bump post page view
     ///
     private func bumpPageViewsForPost() {
         guard let readerPost = post else {
@@ -506,6 +617,13 @@ extension ReaderDetailCoordinator: ReaderDetailHeaderViewDelegate {
 extension ReaderDetailCoordinator: ReaderDetailFeaturedImageViewDelegate {
     func didTapFeaturedImage(_ sender: CachedAnimatedImageView) {
         showFeaturedImage(sender)
+    }
+}
+
+// MARK: - ReaderDetailLikesViewDelegate
+extension ReaderDetailCoordinator: ReaderDetailLikesViewDelegate {
+    func didTapLikesView() {
+        showLikesList()
     }
 }
 

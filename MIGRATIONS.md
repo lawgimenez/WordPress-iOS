@@ -3,6 +3,220 @@
 This file documents changes in the data model. Please explain any changes to the
 data model as well as any custom migrations.
 
+## WordPress 125
+
+@aerych 2021-06-04
+
+- `ReaderPost`: added  `canSubscribeComments` attribute. (required, default `false`, `Boolean`)
+- `ReaderPost`: added  `isSubscribedComments` attribute. (required, default `false`, `Boolean`)
+
+## WordPress 124
+
+@scoutharris 2021-05-07
+
+- `LikeUser`: added  `dateFetched` attribute.
+
+## WordPress 123
+
+@scoutharris 2021-04-28
+
+- Added new attributes to `LikeUser`:
+  - `likedSiteID`
+  - `likedPostID`
+  - `likedCommentID`
+- Corrected spelling of  `dateLikedString`  
+
+## WordPress 122
+
+@scoutharris 2021-04-23
+
+- Added new entities:
+- `LikeUser`
+- `LikeUserPreferredBlog`
+- Created one-to-one relationship between `LikeUser` and `LikeUserPreferredBlog`
+
+## WordPress 121
+
+@twstokes 2021-04-21
+
+- `BlogAuthor`: added the attribute
+    - `deletedFromBlog` (required, default `NO`, `Boolean`)
+
+## WordPress 120
+
+@chipsnyder 2021-04-12
+
+- Created a new entity `BlockEditorSettings` with:
+  - `isFSETheme` (required, default `false`, `Boolean`) FSE = "Full Site Editing"
+  - `lastUpdated` (required, no default, `Date`)
+
+- Created a new entity `BlockEditorSettingElement` with:
+  - `type` (required, no default, `String`)
+  - `value` (required, no default, `String`)
+  - `slug` (required, no default, `String`)
+  - `name` ( required, no default, `String`)
+
+- Created one-to-many relationship between `BlockEditorSettings` and `BlockEditorSettingElement`
+  - `BlockEditorSettings`
+    - `elements` (optional, to-many, cascade on delete)
+  - `BlockEditorSettingElement`
+    - `settings` (required, to-one, nullify on delete)
+
+- Created one-to-one relationship between `Blog` and `BlockEditorSettings`
+  - `BlockEditorSettings`
+    - `blockEditorSettings` (optional, to-one, cascade on delete)
+  - `BlockEditorSettings`
+    - `blog` (required, to-one, nullify on delete)
+
+## WordPress 119
+
+@mkevins 2021-03-31
+
+- `PageTemplateCategory`: added the attribute
+    - `ordinal` as Int64 (non-optional)
+
+## WordPress 118
+
+@chipsnyder 2021-03-26
+
+- `PageTemplateLayout`: set default values on:
+    - `demoUrl` to Empty String
+    - `previewTablet` to Empty String
+    - `previewMobile` to Empty String
+
+## WordPress 117
+
+@mkevins 2021-03-17
+
+- `PageTemplateLayout`: added the attributes
+    - `demoUrl` as string
+    - `previewTablet` as string
+    - `previewMobile` as string
+
+## WordPress 116
+
+@ceyhun 2021-03-15
+
+- `BlogSettings`: renamed `commentsFromKnownUsersWhitelisted` to `commentsFromKnownUsersAllowlisted`
+- `BlogSettings`: renamed `jetpackLoginWhiteListedIPAddresses` to `jetpackLoginAllowListedIPAddresses`
+- `BlogSettings`: renamed `commentsBlacklistKeys` to `commentsBlocklistKeys`
+
+## WordPress 115
+
+@mindgraffiti 2021-03-10
+
+- Added `blockEmailNotifications` is attribute to `AccountSettings` entity.
+
+## WordPress 114
+
+@aerych 2021-02-25
+
+- Changes Blog inviteLinks relation deletion rule to cascade.
+
+## WordPress 113
+
+@aerych 2021-02-19
+
+- Added `InviteLinks` entity.
+
+## WordPress 112
+
+@scoutharris 2021-01-29
+
+- `ReaderPost`: added  `isSeenSupported` attribute.
+- `ReaderPost`: changed default value of  `isSeen` to `true`.
+
+## WordPress 111
+
+@scoutharris 2021-01-14
+
+- Added `isSeen` attribute to  `ReaderPost` entity.
+
+## WordPress 110
+
+@emilylaguna 2021-01-05
+
+- Removed an invalid relationship to `ReaderSiteTopic.sites` from the `Comment` entity
+
+## WordPress 109
+
+@mindgraffiti 2020-12-15
+
+- Added `unseenCount` attribute to  `ReaderSiteTopic` entity
+
+## WordPress 108
+
+@scoutharris 2020-12-14
+
+- `ReaderTeamTopic`: added `organizationID`.
+- `ReaderSiteTopic`: made  `organizationID` non-optional.
+- `ReaderPost`: made  `organizationID` non-optional.  
+
+## WordPress 107
+
+@scoutharris 2020-12-09
+
+- `ReaderSiteTopic`: removed `isWPForTeams`, added `organizationID`.
+- `ReaderPost`: removed `isWPForTeams`, added `organizationID`.  
+
+## WordPress 106
+
+@mindgraffiti 2020-12-07
+
+- Added `isWPForTeams` property to `ReaderSiteTopic`.
+
+## WordPress 105
+
+@scoutharris 2020-12-04
+
+- Added `isWPForTeams` property to  `ReaderPost`.
+
+## WordPress 104
+
+@frosty 2020-12-03
+
+- Set the following `Transformable` properties to use the `NSSecureUnarchiveFromData`:
+  - AbstractPost.revisions
+  - Blog.capabilities
+  - Blog.options
+  - Blog.postFormats
+  - MenuItem.classes
+  - Notification.body
+  - Notification.header
+  - Notification.meta
+  - Notification.subject
+  - Post.disabledPublicizeConnections
+  - Theme.tags
+- Set custom transformers on the following properties:
+  - BlogSettings.commentsBlacklistKeys -> SetValueTransformer
+  - BlogSettings.commentsModerationKeys -> SetValueTransformer
+  - BlogSettings.jetpackLoginWhiteListedIPAddresses -> SetValueTransformer
+  - Media.error -> NSErrorValueTransformer
+  - Post.geolocation -> LocationValueTransformer
+
+## WordPress 103
+
+@guarani 2020-11-25
+
+- Add a new `SiteSuggestion` entity to support Gutenberg's xpost implementation
+- Add a one-to-many relationship between `Blog` and `SiteSuggestion`
+
+## WordPress 102
+
+@chipsnyder 2020-10-20
+
+- Added one-to-many relationship between `Blog` and `PageTemplateCategory`
+  - `Blog`
+    - `pageTemplateCategories` (optional, to-many, cascade on delete)
+  - `PageTemplateCategory`
+    - `blog` (required, to-one, nullify on delete)
+
+- Updated the many-to-many relationship between `PageTemplateLayout` and `PageTemplateCategory`
+  - `PageTemplateLayout`
+    - `categories` (optional, to-many, nullify on delete)
+  - `PageTemplateCategory`
+  - `layouts` (optional, to-many, ***cascade*** on delete)
+
 ## WordPress 101
 
 @emilylaguna 2020-10-09
@@ -14,6 +228,27 @@ data model as well as any custom migrations.
 
 - Add a new `UserSuggestion` entity
 - Add a one-to-many relationship between `Blog` and `UserSuggestion`
+
+## WordPress 99
+
+@chipsnyder 2020-10-05
+
+- Created a new entity `PageTemplateCategory` with:
+  - `desc` (optional, `String`) short for "description"
+  - `emoji` (optional, `String`)
+  - `slug` (required, no default, `String`)
+  - `title` ( required, no default, `String`)
+- Created a new entity `PageTemplateLayout` with:
+  - `content` (required, no default, `String`)
+  - `preview` (required, no default, `String`)
+  - `slug` (required, no default, `String`)
+  - `title` ( required, no default, `String`)
+
+- Created many-to-many relationship between `PageTemplateLayout` and `PageTemplateCategory`
+  - `PageTemplateLayout`
+    - `categories` (optional, to-many, nullify on delete)
+  - `PageTemplateCategory`
+    - `layouts` (optional, to-many, nullify on delete)
 
 ## WordPress 98
 
@@ -34,7 +269,13 @@ data model as well as any custom migrations.
 
 @Gio2018 2020-06-12
 
-- Add fileds `supportPriority`, `supportName` and `nonLocalizedShortname` to the `Plan` entity for Zendesk integration.
+- Add fields `supportPriority`, `supportName` and `nonLocalizedShortname` to the `Plan` entity for Zendesk integration.
+
+## WordPress 95
+
+@aerych 2020-03-21
+
+- `ReaderPost` added the property `isBlogAtomic` (optional, `Boolean`).
 
 ## WordPress 94
 

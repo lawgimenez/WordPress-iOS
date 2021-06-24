@@ -15,7 +15,7 @@ msgstr ""
 
 #. translators: Subtitle to be displayed below the application name in the Apple App Store. Limit to 30 characters including spaces and commas!
 msgctxt "app_store_subtitle"
-msgid "Manage your website anywhere"
+msgid "Build a website or blog"
 msgstr ""
 
 #. translators: Multi-paragraph text used to display in the Apple App Store.
@@ -37,16 +37,28 @@ msgstr ""
 #. translators: Keywords used in the App Store search engine to find the app.
 #. Delimit with a comma between each keyword. Limit to 100 characters including spaces and commas.
 msgctxt "app_store_keywords"
-msgid "social,network,notes,jetpack,photos,writing,geotagging,media,blog,wordpress,website,blogging,design\n"
+msgid "social,notes,jetpack,writing,geotagging,media,blog,website,blogging,journal"
 msgstr ""
 
-msgctxt "v16.0-whats-new"
+msgctxt "v17.6-whats-new"
 msgid ""
-"In this update, you’ll notice some fun enhancements and improvements when both creating and consuming content that make the entire app experience better!\n"
+"With 17.6, you can add the Audio Block to any WordPress.com site, whatever plan you’re on – including the Free Plan. The Audio Block makes it easy to add podcasts, music, and sound files to your posts and pages.\n"
 "\n"
-"The latest with the block editor: When composing posts, you’ll notice there’s now full-width and wide alignment support for the Video, Latest Posts, Gallery, Media & Text, and Pullquote blocks. We also made a few tweaks: one fixed an issue affecting the Classic block on Jetpack sites, and another fix resolved an issue involving unsupported blocks when a device was rotated.\n"
+"In the Reader, you’ll now see a count and summary of Likes added to every post. If that’s not enough Likes in your life, tap the summary and you’ll be able to see the full list.\n"
 "\n"
-"Your Reader, redesigned: The recently refreshed Reader includes a number of changes, including a cleaner reading experience of individual posts. Images display beautifully, and we strongly encourage you to add a featured image to all of your posts so they stand out in the feed! Reading and discovering other people’s content is all part of the creative process. In the Discover tab, we now display recommended sites to explore, and you can select interests relevant to you to see more of the content you like.\n"
+"We’ve been hard at work wrangling UX improvements, too:\n"
+"\n"
+"When you assign a parent page to a page without a title, you’ll now see a ‘(no title)’ placeholder instead of a blank line, giving you a gentle nudge to name the page.\n"
+"\n"
+"You’ve never been able to edit Post Archive pages because they’re automatically generated. In 17.6, you won’t be able to open them in the editor, either, saving you a wasted trip.\n"
+"\n"
+"We’ve also been working on fixing things:\n"
+"\n"
+"We took care of some notices that had been overlapping the ActionSheet, including one that displays Site Icon controls, another displaying the QuickStart Removal, and a third that displays More Actions in the editor.\n"
+"\n"
+"Last up, we squashed a bug that sometimes caused the app to crash during comment moderation and another to fix a login error for WordPress.org sites to show inline.\n"
+"\n"
+"That’s all for 17.6. See you in 17.7!\n"
 msgstr ""
 
 #. translators: This is a standard chunk of text used to tell a user what's new with a release when nothing major has changed.
@@ -76,43 +88,58 @@ msgstr ""
 #. translators: This is a promo message that will be attached on top of the first screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-1"
-msgid "The world’s most popular website builder"
+msgid ""
+"The world’s most\n"
+"popular website\n"
+"builder\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the second screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-2"
-msgid "Create a site or start a blog"
+msgid ""
+"Create a site or\n"
+"start a blog\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the third screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-3"
-msgid "Discover new reads"
+msgid ""
+"Discover\n"
+"new reads\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the fourth screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-4"
-msgid "Build an audience"
+msgid ""
+"Build an\n"
+"audience\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the fifth screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-5"
-msgid "Keep tabs on your site"
+msgid ""
+"Keep tabs on\n"
+"your site\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the fifth screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-6"
-msgid "Reply in real time"
+msgid ""
+"Reply in\n"
+"real time\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the fifth screenshot in the App Store.
 #. No specified characters limit here, but try to keep as short as the source one.
 msgctxt "app_store_screenshot-7"
-msgid "Upload on the go"
+msgid ""
+"Upload\n"
+"on the go\n"
 msgstr ""
 
 #. translators: This is a promo message that will be attached on top of the fifth screenshot in the App Store.

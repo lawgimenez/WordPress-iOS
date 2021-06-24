@@ -5,18 +5,43 @@ protocol PrepublishingDismissible {
 }
 
 class PrepublishingNavigationController: LightNavigationController {
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    // We are using intrinsicHeight as the view's collapsedHeight which is calculated from the preferredContentSize.
+    override public var preferredContentSize: CGSize {
+        set {
+            viewControllers.last?.preferredContentSize = newValue
+            super.preferredContentSize = newValue
+        }
+        get {
+            guard let visibleViewController = viewControllers.last else {
+                return .zero
+            }
 
-        // Set the height for iPad
-        if UIDevice.isPad() {
-            preferredContentSize = Constants.iPadPreferredContentSize
+            return visibleViewController.preferredContentSize
+        }
+    }
+
+    override func pushViewController(_ viewController: UIViewController, animated: Bool) {
+        super.pushViewController(viewController, animated: animated)
+
+        transition()
+    }
+
+    override func popViewController(animated: Bool) -> UIViewController? {
+        let viewController = super.popViewController(animated: animated)
+
+        transition()
+
+        return viewController
+    }
+
+    private func transition() {
+        if let bottomSheet = self.parent as? BottomSheetViewController, let presentedVC = bottomSheet.presentedVC {
+            presentedVC.transition(to: .collapsed)
         }
     }
 
     private enum Constants {
-        static let height: CGFloat = 290
-        static let iPadPreferredContentSize = CGSize(width: 300, height: 240)
+        static let iPadPreferredContentSize = CGSize(width: 300.0, height: 300.0)
     }
 }
 
@@ -25,7 +50,11 @@ class PrepublishingNavigationController: LightNavigationController {
 
 extension PrepublishingNavigationController: DrawerPresentable {
     var allowsUserTransition: Bool {
-        return false
+        guard let visibleDrawer = visibleViewController as? DrawerPresentable else {
+            return true
+        }
+
+        return visibleDrawer.allowsUserTransition
     }
 
     var expandedHeight: DrawerHeight {
@@ -33,13 +62,15 @@ extension PrepublishingNavigationController: DrawerPresentable {
     }
 
     var collapsedHeight: DrawerHeight {
-        return .contentHeight(Constants.height)
+        guard let visibleDrawer = visibleViewController as? DrawerPresentable else {
+            return .contentHeight(300)
+        }
+
+        return visibleDrawer.collapsedHeight
     }
 
     var scrollableView: UIScrollView? {
-        let scroll = topViewController?.view as? UIScrollView
-
-        return scroll
+        return topViewController?.view as? UIScrollView
     }
 
     func handleDismiss() {

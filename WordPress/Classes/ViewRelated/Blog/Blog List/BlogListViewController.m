@@ -37,27 +37,31 @@ static NSInteger HideSearchMinSites = 3;
 
 + (UIViewController *)viewControllerWithRestorationIdentifierPath:(NSArray *)identifierComponents coder:(NSCoder *)coder
 {
-    return [[WPTabBarController sharedInstance] blogListViewController];
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        return nil;
+    }
+
+    return [WPTabBarController sharedInstance].mySitesCoordinator.blogListViewController;
 }
 
 - (instancetype)init
 {
+    return [self initWithMeScenePresenter:[MeScenePresenter new]];
+}
+
+- (instancetype)initWithMeScenePresenter:(id<ScenePresenter>)meScenePresenter
+{
     self = [super init];
+    
     if (self) {
         self.restorationIdentifier = NSStringFromClass([self class]);
         self.restorationClass = [self class];
+        _meScenePresenter = meScenePresenter;
+        
         [self configureDataSource];
         [self configureNavigationBar];
     }
-    return self;
-}
-
-- (id)initWithMeScenePresenter:(id<ScenePresenter>)meScenePresenter
-{
-    self = [self init];
-    if (self) {
-        self.meScenePresenter = meScenePresenter;
-    }
+    
     return self;
 }
 
@@ -65,6 +69,11 @@ static NSInteger HideSearchMinSites = 3;
 - (void)configureDataSource
 {
     self.dataSource = [BlogListDataSource new];
+    
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        self.dataSource.shouldShowDisclosureIndicator = NO;
+    }
+    
     __weak __typeof(self) weakSelf = self;
     self.dataSource.visibilityChanged = ^(Blog *blog, BOOL visible) {
         [weakSelf setVisible:visible forBlog:blog];
@@ -89,7 +98,16 @@ static NSInteger HideSearchMinSites = 3;
                                                                        target:self
                                                                        action:@selector(addSite)];
 
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancelTapped)];
+    }
+
     self.navigationItem.title = NSLocalizedString(@"My Sites", @"");
+}
+
+- (void)cancelTapped
+{
+    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (NSString *)modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(UIView *)view
@@ -196,9 +214,12 @@ static NSInteger HideSearchMinSites = 3;
 
 - (void)updateEditButton
 {
-    NSManagedObjectContext *context = [[ContextManager sharedInstance] mainContext];
-    BlogService *blogService = [[BlogService alloc] initWithManagedObjectContext:context];
-    if ([blogService blogCountForWPComAccounts] > 0) {
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        [self updateBarButtons];
+        return;
+    }
+
+    if ([self shouldShowEditButton]){
         self.navigationItem.leftBarButtonItem = self.editButtonItem;
     } else {
         self.navigationItem.leftBarButtonItem = nil;
@@ -229,7 +250,7 @@ static NSInteger HideSearchMinSites = 3;
     }
     
     if (![self defaultWordPressComAccount]) {
-        [[WordPressAppDelegate shared] showWelcomeScreenIfNeededAnimated:YES];
+        [[WordPressAppDelegate shared].windowManager showFullscreenSignIn];
         return;
     }
 }
@@ -241,7 +262,6 @@ static NSInteger HideSearchMinSites = 3;
     
     // Ensure No Results VC is not shown. Will be shown later if necessary.
     [self.noResultsViewController removeFromView];
-    [self.tableView.refreshControl setHidden: NO];
     
     // If the user has sites, but they're all hidden...
     if (count > 0 && visibleSitesCount == 0 && !self.isEditing) {
@@ -289,8 +309,6 @@ static NSInteger HideSearchMinSites = 3;
                                                    image:@"mysites-nosites"
                                            subtitleImage:nil
                                            accessoryView:nil];
-
-        [self.tableView.refreshControl setHidden: YES];
         [self addNoResultsToView];
     }
 }
@@ -335,7 +353,6 @@ static NSInteger HideSearchMinSites = 3;
                                            accessoryView:nil];
     }
 
-    [self.tableView.refreshControl setHidden: YES];
     [self addNoResultsToView];
     
 }
@@ -403,6 +420,7 @@ static NSInteger HideSearchMinSites = 3;
 {
     self.isSyncing = NO;
     [self.tableView.refreshControl endRefreshing];
+    [self refreshStatsWidgetsSiteList];
 }
 
 - (void)removeBlogItemsFromSpotlight:(Blog *)blog {
@@ -465,6 +483,11 @@ static NSInteger HideSearchMinSites = 3;
 
 - (BOOL)shouldBypassBlogListViewControllerWhenSelectedFromTabBar
 {
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        // We should never bypass the list when we're using the new navigation bar
+        return false;
+    }
+
     return self.dataSource.displayedBlogsCount == 1;
 }
 
@@ -526,16 +549,6 @@ static NSInteger HideSearchMinSites = 3;
     UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
     [refreshControl addTarget:self action:@selector(syncBlogs) forControlEvents:UIControlEventValueChanged];
     self.tableView.refreshControl = refreshControl;
-    
-    // Workaround: The refresh control was showing on top of the table view, apparently because
-    // iOS is failing to put it behind the table view contents (iOS bug).
-    //
-    // Ref: https://stackoverflow.com/a/59713642
-    //
-    // If you want to test if this workaround can be removed, simply comment it, run the app
-    // and check that when the blog list if first displayed, the refresh control is NOT visible
-    // at the front of the table view.
-    refreshControl.layer.zPosition = -1;
 
     self.tableView.tableFooterView = [UIView new];
     [WPStyleGuide configureColorsForView:self.view andTableView:self.tableView];
@@ -662,47 +675,50 @@ static NSInteger HideSearchMinSites = 3;
     }
 }
 
-- (NSArray *)tableView:(UITableView *)tableView editActionsForRowAtIndexPath:(NSIndexPath *)indexPath
+- (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     Blog *blog = [self.dataSource blogAtIndexPath:indexPath];
     NSMutableArray *actions = [NSMutableArray array];
     __typeof(self) __weak weakSelf = self;
 
     if ([blog supports:BlogFeatureRemovable]) {
-        UITableViewRowAction *removeAction = [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-                                                                                title:NSLocalizedString(@"Remove", @"Removes a self hosted site from the app")
-                                                                              handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath) {
-                                                                                  [ReachabilityUtils onAvailableInternetConnectionDo:^{
-                                                                                      [weakSelf showRemoveSiteAlertForIndexPath:indexPath];
-                                                                                  }];
-                                                                              }];
+        UIContextualAction *removeAction = [UIContextualAction
+                                            contextualActionWithStyle:UIContextualActionStyleNormal title:NSLocalizedString(@"Remove", @"Removes a self hosted site from the app")
+                                            handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
+            [ReachabilityUtils onAvailableInternetConnectionDo:^{
+                [weakSelf showRemoveSiteAlertForIndexPath:indexPath];
+            }];
+        }];
+
         removeAction.backgroundColor = [UIColor murielError];
         [actions addObject:removeAction];
     } else {
         if (blog.visible) {
-            UITableViewRowAction *hideAction = [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-                                                                                  title:NSLocalizedString(@"Hide", @"Hides a site from the site picker list")
-                                                                                handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath) {
-                                                                                    [ReachabilityUtils onAvailableInternetConnectionDo:^{
-                                                                                        [weakSelf hideBlogAtIndexPath:indexPath];
-                                                                                    }];
-                                                                                }];
+            UIContextualAction *hideAction = [UIContextualAction
+                                                contextualActionWithStyle:UIContextualActionStyleNormal title:NSLocalizedString(@"Hide", @"Hides a site from the site picker list")
+                                                handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
+                [ReachabilityUtils onAvailableInternetConnectionDo:^{
+                    [weakSelf hideBlogAtIndexPath:indexPath];
+                }];
+            }];
+
             hideAction.backgroundColor = [UIColor murielNeutral30];
             [actions addObject:hideAction];
         } else {
-            UITableViewRowAction *unhideAction = [UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-                                                                                    title:NSLocalizedString(@"Unhide", @"Unhides a site from the site picker list")
-                                                                                  handler:^(UITableViewRowAction * _Nonnull action, NSIndexPath * _Nonnull indexPath) {
-                                                                                      [ReachabilityUtils onAvailableInternetConnectionDo:^{
-                                                                                          [weakSelf unhideBlogAtIndexPath:indexPath];
-                                                                                      }];
-                                                                                  }];
+            UIContextualAction *unhideAction = [UIContextualAction
+                                                contextualActionWithStyle:UIContextualActionStyleNormal title:NSLocalizedString(@"Unhide", @"Unhides a site from the site picker list")
+                                                handler:^(UIContextualAction * _Nonnull action, __kindof UIView * _Nonnull sourceView, void (^ _Nonnull completionHandler)(BOOL)) {
+                [ReachabilityUtils onAvailableInternetConnectionDo:^{
+                    [weakSelf unhideBlogAtIndexPath:indexPath];
+                }];
+            }];
+
             unhideAction.backgroundColor = [UIColor murielSuccess];
             [actions addObject:unhideAction];
         }
     }
 
-    return actions;
+    return [UISwipeActionsConfiguration configurationWithActions:actions];
 }
 
 - (void)showRemoveSiteAlertForIndexPath:(NSIndexPath *)indexPath
@@ -802,6 +818,19 @@ static NSInteger HideSearchMinSites = 3;
 
 - (void)setSelectedBlog:(Blog *)selectedBlog animated:(BOOL)animated
 {
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        if (self.blogSelected != nil) {
+            self.blogSelected(self, selectedBlog);
+        } else {
+            // The site picker without a site-selection callback makes no sense.  We'll dismiss the VC to keep
+            // the app running, but the user won't be able to switch sites.
+            DDLogError(@"There's no site-selection callback assigned to the site picker.");
+            [self dismissViewControllerAnimated:animated completion:nil];
+        }
+        
+        return;
+    }
+    
     if (selectedBlog != _selectedBlog || !_blogDetailsViewController) {
         _selectedBlog = selectedBlog;
         self.blogDetailsViewController = [self makeBlogDetailsViewController];
@@ -891,6 +920,40 @@ static NSInteger HideSearchMinSites = 3;
     }
 }
 
+- (BOOL)shouldShowAddSiteButton
+{
+    return self.dataSource.allBlogsCount > 0;
+}
+
+- (BOOL)shouldShowEditButton
+{
+    NSManagedObjectContext *context = [[ContextManager sharedInstance] mainContext];
+    BlogService *blogService = [[BlogService alloc] initWithManagedObjectContext:context];
+    return [blogService blogCountForWPComAccounts] > 0;
+}
+
+- (void)updateBarButtons
+{
+    BOOL showAddSiteButton = [self shouldShowAddSiteButton];
+    BOOL showEditButton = [self shouldShowEditButton];
+
+    if (!showAddSiteButton) {
+        [self addMeButtonToNavigationBarWithEmail:[[self defaultWordPressComAccount] email] meScenePresenter:self.meScenePresenter];
+        return;
+    }
+
+    if (![AppConfiguration allowSiteCreation]) {
+        self.navigationItem.rightBarButtonItem = self.editButtonItem;
+        return;
+    }
+
+    if (showEditButton) {
+        self.navigationItem.rightBarButtonItems = @[ self.addSiteButton, self.editButtonItem ];
+    } else {
+        self.navigationItem.rightBarButtonItem = self.addSiteButton;
+    }
+}
+
 - (void)toggleAddSiteButton:(BOOL)enabled
 {
     self.addSiteButton.enabled = enabled;
@@ -898,12 +961,17 @@ static NSInteger HideSearchMinSites = 3;
 
 - (void)setAddSiteBarButtonItem
 {
-    if (self.dataSource.allBlogsCount == 0) {
-        [self addMeButtonToNavigationBarWith:[[self defaultWordPressComAccount] email]];
+    if ([Feature enabled:FeatureFlagNewNavBarAppearance]) {
+        [self updateBarButtons];
+        return;
     }
-    else {
-        self.navigationItem.rightBarButtonItem = self.addSiteButton;
+
+    if (![self shouldShowAddSiteButton]) {
+        [self addMeButtonToNavigationBarWithEmail:[[self defaultWordPressComAccount] email] meScenePresenter:self.meScenePresenter];
+        return;
     }
+
+    self.navigationItem.rightBarButtonItem = self.addSiteButton;
 }
 
 - (void)addSite

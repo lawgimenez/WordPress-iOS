@@ -48,7 +48,7 @@ final class InteractiveNotificationsManager: NSObject {
     /// The first time this method is called it will ask the user for permission to show notifications.
     /// Because of this, this should be called only when we know we will need to show notifications (for instance, after login).
     ///
-    @objc func requestAuthorization(completion: @escaping () -> ()) {
+    @objc func requestAuthorization(completion: @escaping (_ allowed: Bool) -> Void) {
         defer {
             WPAnalytics.track(.pushNotificationOSAlertShown)
         }
@@ -67,7 +67,7 @@ final class InteractiveNotificationsManager: NSObject {
                     WPAnalytics.track(.pushNotificationOSAlertDenied)
                 }
             }
-            completion()
+            completion(allowed)
         }
     }
 
@@ -84,6 +84,10 @@ final class InteractiveNotificationsManager: NSObject {
         if let noteCategory = NoteCategoryDefinition(rawValue: category),
             noteCategory.isLocalNotification {
             return handleLocalNotificationAction(with: identifier, category: category, userInfo: userInfo, responseText: responseText)
+        }
+
+        if NoteActionDefinition.approveLogin == NoteActionDefinition(rawValue: identifier) {
+            return approveAuthChallenge(userInfo)
         }
 
         guard AccountHelper.isDotcomAvailable(),
@@ -271,6 +275,15 @@ private extension InteractiveNotificationsManager {
         let categories: [UNNotificationCategory] = NoteCategoryDefinition.allDefinitions.map({ $0.notificationCategory() })
         return Set(categories)
     }
+
+    /// Handles approving an 2fa authentication challenge.
+    ///
+    /// - Parameter userInfo: The notification's Payload
+    /// - Returns: True if successfule. Otherwise false.
+    ///
+    func approveAuthChallenge(_ userInfo: NSDictionary) -> Bool {
+        return PushNotificationsManager.shared.handleAuthenticationApprovedAction(userInfo)
+    }
 }
 
 
@@ -293,6 +306,7 @@ private extension InteractiveNotificationsManager {
         case postUploadFailure      = "post-upload-failure"
         case shareUploadSuccess     = "share-upload-success"
         case shareUploadFailure     = "share-upload-failure"
+        case login                  = "push_auth"
 
         var actions: [NoteActionDefinition] {
             switch self {
@@ -316,6 +330,8 @@ private extension InteractiveNotificationsManager {
                 return [.shareEditPost]
             case .shareUploadFailure:
                 return []
+            case .login:
+                return [.approveLogin, .denyLogin]
             }
         }
 
@@ -335,7 +351,7 @@ private extension InteractiveNotificationsManager {
                 options: [])
         }
 
-        static var allDefinitions = [commentApprove, commentLike, commentReply, commentReplyWithLike, mediaUploadSuccess, mediaUploadFailure, postUploadSuccess, postUploadFailure, shareUploadSuccess, shareUploadFailure]
+        static var allDefinitions = [commentApprove, commentLike, commentReply, commentReplyWithLike, mediaUploadSuccess, mediaUploadFailure, postUploadSuccess, postUploadFailure, shareUploadSuccess, shareUploadFailure, login]
         static var localDefinitions = [mediaUploadSuccess, mediaUploadFailure, postUploadSuccess, postUploadFailure, shareUploadSuccess, shareUploadFailure]
     }
 
@@ -352,6 +368,8 @@ private extension InteractiveNotificationsManager {
         case postRetry        = "POST_RETRY"
         case postView         = "POST_VIEW"
         case shareEditPost    = "SHARE_EDIT_POST"
+        case approveLogin     = "APPROVE_LOGIN_ATTEMPT"
+        case denyLogin        = "DENY_LOGIN_ATTEMPT"
 
         var description: String {
             switch self {
@@ -371,6 +389,10 @@ private extension InteractiveNotificationsManager {
                 return NSLocalizedString("View", comment: "Opens the post epilogue screen to allow sharing / viewing of a post.")
             case .shareEditPost:
                 return NSLocalizedString("Edit Post", comment: "Opens the editor to edit an existing post.")
+            case .approveLogin:
+                return NSLocalizedString("Approve", comment: "Verb. Approves a 2fa authentication challenge, and logs in a user.")
+            case .denyLogin:
+                return NSLocalizedString("Deny", comment: "Verb. Denies a 2fa authentication challenge.")
             }
         }
 
@@ -438,7 +460,7 @@ private extension InteractiveNotificationsManager {
             }
         }
 
-        static var allDefinitions = [commentApprove, commentLike, commentReply, mediaWritePost, mediaRetry, postRetry, postView, shareEditPost]
+        static var allDefinitions = [commentApprove, commentLike, commentReply, mediaWritePost, mediaRetry, postRetry, postView, shareEditPost, approveLogin, denyLogin]
     }
 }
 
@@ -454,6 +476,12 @@ extension InteractiveNotificationsManager: UNUserNotificationCenterDelegate {
         // If the app is open, and a Zendesk view is being shown, Zendesk will display an alert allowing the user to view the updated ticket.
         handleZendeskNotification(userInfo: userInfo)
 
+        // Otherwise see if it's an auth notification
+        if PushNotificationsManager.shared.handleAuthenticationNotification(userInfo, userInteraction: true, completionHandler: nil) {
+            return
+        }
+
+        // Otherwise a share notification
         let category = notification.request.content.categoryIdentifier
 
         guard (category == ShareNoticeConstants.categorySuccessIdentifier || category == ShareNoticeConstants.categoryFailureIdentifier),
@@ -510,6 +538,6 @@ extension InteractiveNotificationsManager: UNUserNotificationCenterDelegate {
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, openSettingsFor notification: UNNotification?) {
-        MeNavigationAction.notificationSettings.perform()
+        MeNavigationAction.notificationSettings.perform(router: UniversalLinkRouter.shared)
     }
 }

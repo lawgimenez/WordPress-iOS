@@ -1,3 +1,4 @@
+import UITestsFoundation
 import XCTest
 
 class EditorFlow {
@@ -5,6 +6,10 @@ class EditorFlow {
         while EditorPostSettings.isLoaded() || CategoriesComponent.isLoaded() || TagsComponent.isLoaded() || MediaPickerAlbumListScreen.isLoaded() || MediaPickerAlbumScreen.isLoaded() {
             navBackButton.tap()
         }
+    }
+
+    static func gotoMySiteScreen() -> MySiteScreen {
+        return TabNavComponent().gotoMySiteScreen()
     }
 
     static func toggleBlockEditor(to state: SiteSettingsScreen.Toggle) -> SiteSettingsScreen {

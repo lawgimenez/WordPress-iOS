@@ -287,10 +287,26 @@ extension PushNotificationsManager {
         ///
         if applicationState != .background || userInteraction {
             authenticationManager.handleAuthenticationNotification(userInfo)
+        } else {
+            DDLogInfo("Skipping handling authentication notification due to app being in background or user not interacting with it.")
         }
 
         completionHandler?(.newData)
 
+        return true
+    }
+
+    /// A handler for a 2fa auth notification approval action.
+    ///
+    /// - Parameter userInfo: The Notification's Payload
+    /// - Returns: True if successful. False otherwise.
+    ///
+    @objc func handleAuthenticationApprovedAction(_ userInfo: NSDictionary) -> Bool {
+        let authenticationManager = PushAuthenticationManager()
+        guard authenticationManager.isAuthenticationNotification(userInfo) else {
+            return false
+        }
+        authenticationManager.handleAuthenticationApprovedAction(userInfo)
         return true
     }
 
